@@ -1,0 +1,17 @@
+{
+  "title": "Schedule APP",
+  "description": "Easily install and share the app on mobile devices with step-by-step guidance, enhancing accessibility and collaboration for users.",
+  "robots": {
+    "index": false
+  },
+  "icons": {
+    "icon": "/.figma/make/favicon.png"
+  },
+  "openGraph": {
+    "image": "/.figma/make/social-image.png"
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
