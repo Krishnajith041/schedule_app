@@ -4,8 +4,13 @@ import { SchedulePage }      from './pages/SchedulePage';
 import { FoodItemsPage }     from './pages/FoodItemsPage';
 import { UpcomingEventsPage} from './pages/UpcomingEventsPage';
 import { AnalysisPage }      from './pages/AnalysisPage';
+import { LoginPage }         from './pages/LoginPage';
 
 export const router = createHashRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
   {
     path: '/',
     element: <RootLayout />,

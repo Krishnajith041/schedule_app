@@ -96,6 +96,14 @@ h1, h2, h3, h4, h5, h6, .font-display {
   transform: translateY(4px);
 }
 
+.btn-3d:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #7c3aed, #a855f7, #ec4899);
   color: #fff;
