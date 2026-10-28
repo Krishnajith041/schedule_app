@@ -1,4 +1,5 @@
-import { useState, useMemo, useId } from 'react';
+import { useState, useMemo, useId, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button3D } from './Button3D';
 import { RecurrenceFields } from './RecurrenceFields';
@@ -29,6 +30,7 @@ export function AddEventDialog({
   isEditing = false,
 }: AddEventDialogProps) {
   const uid = useId();
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   // Form fields
   const [title,       setTitle]       = useState(initialValues?.title       ?? '');
@@ -58,6 +60,28 @@ export function AddEventDialog({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Lock background scroll when dialog is open and handle Escape key
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (seriesAction) {
+          setSeriesAction(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, seriesAction]);
+
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (!title.trim())  e.title = 'Title is required';
@@ -82,7 +106,10 @@ export function AddEventDialog({
   }
 
   function handleSave() {
-    if (!validate()) return;
+    if (!validate()) {
+      bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (isEditing && initialValues?.recurrence) {
       setSeriesAction('save');
       return;
@@ -158,48 +185,61 @@ export function AddEventDialog({
     });
   }
 
-  return (
+  return createPortal(
     <>
-      <div className="bottom-sheet animate-fade-in">
+      <div className="bottom-sheet animate-fade-in" role="dialog" aria-modal="true">
         {/* Overlay */}
-        <div className="bottom-sheet-overlay" onClick={onClose} />
+        <div className="bottom-sheet-overlay" onClick={onClose} aria-hidden />
 
-        {/* Panel */}
+        {/* Responsive Panel: bottom-sheet on mobile, centered modal card on desktop */}
         <div className="bottom-sheet-panel">
-          <div className="bottom-sheet-handle" />
+          {/* Mobile Drag Handle */}
+          <div className="bottom-sheet-handle" aria-hidden />
 
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-white/8">
-            <h2 className="font-display font-bold text-white text-lg">
-              {isEditing ? 'Edit Event' : 'Add Event'}
-            </h2>
-            <button onClick={onClose} className="btn-3d btn-icon btn-secondary" aria-label="Close">
+          {/* Fixed Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0 border-b border-white/10">
+            <div>
+              <h2 className="font-display font-bold text-white text-lg sm:text-xl">
+                {isEditing ? 'Edit Event' : 'Add Event'}
+              </h2>
+              <p className="text-xs text-white/50">
+                {isEditing ? 'Update event parameters and menu' : 'Fill details to schedule a new event'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="btn-3d btn-icon btn-secondary !min-h-[38px] !min-w-[38px] !p-2"
+              aria-label="Close dialog"
+            >
               <X size={18} />
             </button>
           </div>
 
-          {/* Scrollable body */}
-          <div className="bottom-sheet-body">
-            <div className="flex flex-col gap-4 pt-3">
+          {/* Scrollable Form Body */}
+          <div ref={bodyRef} className="bottom-sheet-body">
+            <div className="flex flex-col gap-4 pt-3 pb-2">
 
               {/* Title */}
               <div className="flex flex-col gap-1">
-                <label htmlFor={`${uid}-title`} className="text-sm font-medium text-white/70">
+                <label htmlFor={`${uid}-title`} className="text-sm font-medium text-white/80">
                   Event Title *
                 </label>
                 <input
                   id={`${uid}-title`}
-                  className="glass-input"
+                  className={`glass-input ${errors.title ? 'border-red-400 focus:border-red-400' : ''}`}
                   placeholder="e.g. Wedding Reception"
                   value={title}
-                  onChange={e => setTitle(e.target.value)}
+                  onChange={e => {
+                    setTitle(e.target.value);
+                    if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                  }}
                 />
-                {errors.title && <p className="text-red-400 text-xs">{errors.title}</p>}
+                {errors.title && <p className="text-red-400 text-xs font-medium">{errors.title}</p>}
               </div>
 
               {/* Client */}
               <div className="flex flex-col gap-1">
-                <label htmlFor={`${uid}-client`} className="text-sm font-medium text-white/70">
+                <label htmlFor={`${uid}-client`} className="text-sm font-medium text-white/80">
                   Client Name
                 </label>
                 <input
@@ -214,18 +254,21 @@ export function AddEventDialog({
               {/* Date + Times */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-date`} className="text-sm font-medium text-white/70">Date *</label>
+                  <label htmlFor={`${uid}-date`} className="text-sm font-medium text-white/80">Date *</label>
                   <input
                     id={`${uid}-date`}
                     type="date"
-                    className="glass-input"
+                    className={`glass-input ${errors.date ? 'border-red-400 focus:border-red-400' : ''}`}
                     value={date}
-                    onChange={e => setDate(e.target.value)}
+                    onChange={e => {
+                      setDate(e.target.value);
+                      if (errors.date) setErrors(prev => ({ ...prev, date: '' }));
+                    }}
                   />
-                  {errors.date && <p className="text-red-400 text-xs">{errors.date}</p>}
+                  {errors.date && <p className="text-red-400 text-xs font-medium">{errors.date}</p>}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-start`} className="text-sm font-medium text-white/70">Start Time</label>
+                  <label htmlFor={`${uid}-start`} className="text-sm font-medium text-white/80">Start Time</label>
                   <input
                     id={`${uid}-start`}
                     type="time"
@@ -235,7 +278,7 @@ export function AddEventDialog({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-end`} className="text-sm font-medium text-white/70">End Time</label>
+                  <label htmlFor={`${uid}-end`} className="text-sm font-medium text-white/80">End Time</label>
                   <input
                     id={`${uid}-end`}
                     type="time"
@@ -247,9 +290,9 @@ export function AddEventDialog({
               </div>
 
               {/* Venue + Guests */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-venue`} className="text-sm font-medium text-white/70">Venue</label>
+                  <label htmlFor={`${uid}-venue`} className="text-sm font-medium text-white/80">Venue</label>
                   <input
                     id={`${uid}-venue`}
                     className="glass-input"
@@ -259,7 +302,7 @@ export function AddEventDialog({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-guests`} className="text-sm font-medium text-white/70">Guests</label>
+                  <label htmlFor={`${uid}-guests`} className="text-sm font-medium text-white/80">Guests</label>
                   <input
                     id={`${uid}-guests`}
                     type="number"
@@ -274,7 +317,7 @@ export function AddEventDialog({
 
               {/* Notes */}
               <div className="flex flex-col gap-1">
-                <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-white/70">Notes</label>
+                <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-white/80">Notes</label>
                 <textarea
                   id={`${uid}-notes`}
                   className="glass-input"
@@ -299,18 +342,20 @@ export function AddEventDialog({
                 />
               </div>
 
-              {/* Food picker */}
+              {/* Food items picker */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display font-semibold text-white text-sm">Food Items</h3>
                   {selectedItems.length > 0 && (
-                    <span className="text-xs text-violet-300 font-semibold">{selectedItems.length} selected</span>
+                    <span className="text-xs text-violet-300 font-semibold px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30">
+                      {selectedItems.length} selected
+                    </span>
                   )}
                 </div>
 
                 {/* Search */}
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
                   <input
                     className="glass-input pl-8"
                     placeholder="Search food items…"
@@ -333,7 +378,7 @@ export function AddEventDialog({
                         <button
                           type="button"
                           onClick={() => toggleCat(cat.id)}
-                          className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+                          className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
                         >
                           <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
                             {cat.name}
@@ -353,7 +398,7 @@ export function AddEventDialog({
                               style={qty > 0 ? { background: 'rgba(139,92,246,0.07)' } : {}}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white/85 truncate">{fi.name}</p>
+                                <p className="text-sm text-white/90 truncate">{fi.name}</p>
                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                   <span className="text-xs text-white/40">
                                     {formatINR(fi.pricePerUnit)}
@@ -397,33 +442,37 @@ export function AddEventDialog({
                     <p className="text-white/30 text-sm text-center py-6">No items found</p>
                   )}
                 </div>
-
-                {/* Live total */}
-                {selectedItems.length > 0 && (
-                  <div
-                    className="flex items-center justify-between px-4 py-3 rounded-xl"
-                    style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}
-                  >
-                    <span className="text-sm text-white/70 font-medium">Estimated Total</span>
-                    <span className="font-display font-bold text-xl text-violet-200">{formatINR(total)}</span>
-                  </div>
-                )}
               </div>
+            </div>
+          </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                {isEditing && onDelete && (
-                  <Button3D variant="danger" onClick={handleDelete} className="flex-shrink-0">
-                    Delete
-                  </Button3D>
-                )}
-                <Button3D variant="secondary" onClick={onClose} className="flex-1">
-                  Cancel
-                </Button3D>
-                <Button3D variant="primary" onClick={handleSave} className="flex-1">
-                  {isEditing ? 'Save Changes' : 'Add Event'}
-                </Button3D>
+          {/* Pinned Responsive Footer */}
+          <div className="bottom-sheet-footer">
+            {/* Live total badge (compact and visible above buttons) */}
+            {selectedItems.length > 0 && (
+              <div className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-violet-950/50 border border-violet-500/25">
+                <span className="text-xs text-white/70 font-medium">
+                  Estimated Total ({selectedItems.length} selected)
+                </span>
+                <span className="font-display font-bold text-base text-violet-200">
+                  {formatINR(total)}
+                </span>
               </div>
+            )}
+
+            {/* Action Buttons: Cancel / Save / Delete */}
+            <div className="flex items-center gap-3">
+              {isEditing && onDelete && (
+                <Button3D variant="danger" onClick={handleDelete} className="flex-shrink-0">
+                  Delete
+                </Button3D>
+              )}
+              <Button3D variant="secondary" onClick={onClose} className="flex-1">
+                Cancel
+              </Button3D>
+              <Button3D variant="primary" onClick={handleSave} className="flex-1">
+                {isEditing ? 'Save Changes' : 'Add Event'}
+              </Button3D>
             </div>
           </div>
         </div>
@@ -432,40 +481,43 @@ export function AddEventDialog({
       {/* Series scope modal */}
       {seriesAction && (
         <div
-          className="fixed inset-0 z-[110] flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+          role="dialog"
+          aria-modal="true"
         >
-          <div className="glass-card w-full max-w-sm p-5 animate-fade-in-up">
-            <h2 className="font-display font-bold text-white mb-2">
+          <div className="glass-card w-full max-w-sm p-5 animate-fade-in-up border border-white/15 shadow-2xl">
+            <h2 className="font-display font-bold text-white text-base mb-2">
               {seriesAction === 'save' ? 'Save recurring event' : 'Delete recurring event'}
             </h2>
-            <p className="text-white/60 text-sm mb-5">
+            <p className="text-white/60 text-sm mb-5 leading-relaxed">
               {seriesAction === 'save'
                 ? 'Do you want to save changes to just this occurrence, or to all events in the series?'
                 : 'Do you want to delete just this occurrence, or all events in the series?'}
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <Button3D
                 variant={seriesAction === 'delete' ? 'danger' : 'primary'}
                 onClick={() => confirmSeriesAction('this')}
-                className="w-full"
+                className="w-full justify-center"
               >
                 This event only
               </Button3D>
               <Button3D
                 variant={seriesAction === 'delete' ? 'danger' : 'secondary'}
                 onClick={() => confirmSeriesAction('all')}
-                className="w-full"
+                className="w-full justify-center"
               >
                 All events in series
               </Button3D>
-              <Button3D variant="secondary" onClick={() => setSeriesAction(null)} className="w-full">
+              <Button3D variant="secondary" onClick={() => setSeriesAction(null)} className="w-full justify-center">
                 Cancel
               </Button3D>
             </div>
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }

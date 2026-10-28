@@ -67,7 +67,7 @@ export function RootLayout() {
       </header>
 
       {/* Centered container on desktop */}
-      <div className="relative z-10 mx-auto w-full max-w-3xl flex-1">
+      <div className="relative mx-auto w-full max-w-3xl flex-1">
         <Outlet />
       </div>
 

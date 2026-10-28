@@ -1,4 +1,5 @@
 import { useState, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Check } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
 import { CategorySection } from '../components/CategorySection';
@@ -157,9 +158,14 @@ export function FoodItemsPage() {
       </div>
 
       {/* Edit category modal */}
-      {editingCat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up">
+      {editingCat && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up border border-white/15 shadow-2xl">
             <h2 className="font-display font-bold text-white mb-4">Edit Category</h2>
             <input
               className="glass-input mb-4"
@@ -169,37 +175,44 @@ export function FoodItemsPage() {
               autoFocus
             />
             <div className="flex gap-3">
-              <Button3D variant="secondary" onClick={() => setEditingCat(null)} className="flex-1">
+              <Button3D variant="secondary" onClick={() => setEditingCat(null)} className="flex-1 justify-center">
                 Cancel
               </Button3D>
-              <Button3D variant="primary" onClick={handleSaveEditCategory} className="flex-1">
+              <Button3D variant="primary" onClick={handleSaveEditCategory} className="flex-1 justify-center">
                 Save
               </Button3D>
             </div>
           </GlassCard>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Confirm delete modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up">
+      {confirmDelete && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up border border-white/15 shadow-2xl">
             <h2 className="font-display font-bold text-white mb-2">Confirm Delete</h2>
-            <p className="text-white/60 text-sm mb-5">
+            <p className="text-white/60 text-sm mb-5 leading-relaxed">
               {confirmDelete.type === 'cat'
                 ? 'This will delete the category and ALL its food items. This cannot be undone.'
                 : 'Delete this food item? This cannot be undone.'}
             </p>
             <div className="flex gap-3">
-              <Button3D variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1">
+              <Button3D variant="secondary" onClick={() => setConfirmDelete(null)} className="flex-1 justify-center">
                 Cancel
               </Button3D>
-              <Button3D variant="danger" onClick={confirmDeleteAction} className="flex-1">
+              <Button3D variant="danger" onClick={confirmDeleteAction} className="flex-1 justify-center">
                 Delete
               </Button3D>
             </div>
           </GlassCard>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

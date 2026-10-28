@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { BarChart2, Plus, CalendarX } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
@@ -149,42 +150,45 @@ export function SchedulePage() {
       )}
 
       {/* Delete confirmation (non-recurring) */}
-      {deleteConfirm && !editingEvent && (
+      {deleteConfirm && !editingEvent && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          role="dialog"
+          aria-modal="true"
         >
-          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up">
+          <GlassCard className="w-full max-w-sm p-5 animate-fade-in-up border border-white/15 shadow-2xl">
             <h2 className="font-display font-bold text-white mb-2">Delete Event</h2>
-            <p className="text-white/60 text-sm mb-5">
+            <p className="text-white/60 text-sm mb-5 leading-relaxed">
               {deleteConfirm.recurrence
                 ? 'This is a recurring event. Delete just this occurrence or the entire series?'
                 : `Delete "${deleteConfirm.title}"? This cannot be undone.`}
             </p>
             {deleteConfirm.recurrence ? (
-              <div className="flex flex-col gap-2">
-                <Button3D variant="danger" onClick={() => handleDeleteEvent('this')} className="w-full">
+              <div className="flex flex-col gap-2.5">
+                <Button3D variant="danger" onClick={() => handleDeleteEvent('this')} className="w-full justify-center">
                   This event only
                 </Button3D>
-                <Button3D variant="danger" onClick={() => handleDeleteEvent('all')} className="w-full">
+                <Button3D variant="danger" onClick={() => handleDeleteEvent('all')} className="w-full justify-center">
                   All events in series
                 </Button3D>
-                <Button3D variant="secondary" onClick={() => setDeleteConfirm(null)} className="w-full">
+                <Button3D variant="secondary" onClick={() => setDeleteConfirm(null)} className="w-full justify-center">
                   Cancel
                 </Button3D>
               </div>
             ) : (
               <div className="flex gap-3">
-                <Button3D variant="secondary" onClick={() => setDeleteConfirm(null)} className="flex-1">
+                <Button3D variant="secondary" onClick={() => setDeleteConfirm(null)} className="flex-1 justify-center">
                   Cancel
                 </Button3D>
-                <Button3D variant="danger" onClick={() => handleDeleteEvent('this')} className="flex-1">
+                <Button3D variant="danger" onClick={() => handleDeleteEvent('this')} className="flex-1 justify-center">
                   Delete
                 </Button3D>
               </div>
             )}
           </GlassCard>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
