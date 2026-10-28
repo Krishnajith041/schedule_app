@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import { useState, useId } from 'react';
 import { Plus, X, Check } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
 import { CategorySection } from '../components/CategorySection';

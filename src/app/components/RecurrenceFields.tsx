@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import { useId } from 'react';
 import type { RecurrenceRule } from '../types';
 
 const DAY_CHIPS = [

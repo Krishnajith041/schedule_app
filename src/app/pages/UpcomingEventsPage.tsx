@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { CalendarX } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
 import { GlassCard } from '../components/GlassCard';

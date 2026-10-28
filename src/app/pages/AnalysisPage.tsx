@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, Calendar, DollarSign, Users, Lightbulb, Info } from 'lucide-react';
 import {
@@ -217,7 +217,7 @@ export function AnalysisPage() {
                 tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
               <Tooltip
                 contentStyle={chartTooltipStyle}
-                formatter={(v: number) => [formatINR(v), 'Revenue']}
+                formatter={(v: any) => [formatINR(Number(v) || 0), 'Revenue']}
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
               />
               <Bar dataKey="revenue" radius={[6,6,0,0]}>
@@ -288,7 +288,7 @@ export function AnalysisPage() {
               />
               <Tooltip
                 contentStyle={chartTooltipStyle}
-                formatter={(v: number) => [formatINR(v), 'Spend']}
+                formatter={(v: any) => [formatINR(Number(v) || 0), 'Spend']}
               />
             </PieChart>
           </ResponsiveContainer>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Clock, MapPin, Users, Repeat, Pencil, Trash2 } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { formatINR } from '../lib/currency';

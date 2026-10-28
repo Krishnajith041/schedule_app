@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import {
   MONTH_NAMES, DAY_NAMES, daysInMonth, firstWeekdayOfMonth,
-  toDateStr, parseLocalDate,
+  toDateStr,
 } from '../lib/dates';
 import { getOccurrencesOnDate } from '../lib/recurrence';
 import type { CateringEvent } from '../types';

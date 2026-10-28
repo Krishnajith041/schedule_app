@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart2, Plus, CalendarX } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';

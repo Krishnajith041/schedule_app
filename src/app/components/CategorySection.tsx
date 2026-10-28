@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Trash2, Plus } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { Button3D } from './Button3D';

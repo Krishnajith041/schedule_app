@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useRef, type ReactNode } from 'react';
+import { useReducer, useEffect, useRef, type ReactNode } from 'react';
 import { AppContext } from './AppContext';
 import { reducer } from './reducer';
 import { SEED_CATEGORIES, SEED_FOOD_ITEMS } from './seedData';

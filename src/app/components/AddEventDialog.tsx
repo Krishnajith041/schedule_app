@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useId, useEffect } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { X, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button3D } from './Button3D';
 import { RecurrenceFields } from './RecurrenceFields';
