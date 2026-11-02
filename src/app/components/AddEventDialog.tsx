@@ -411,7 +411,7 @@ export function AddEventDialog({
                                   )}
                                 </div>
                               </div>
-                              {/* Quantity stepper */}
+                              {/* Quantity stepper with typed input */}
                               <div className="qty-stepper flex-shrink-0">
                                 <button
                                   type="button"
@@ -422,7 +422,31 @@ export function AddEventDialog({
                                 >
                                   −
                                 </button>
-                                <span className="qty-num">{qty}</span>
+                                {/* Editable quantity number input */}
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={qty === 0 ? '' : qty}
+                                  placeholder="0"
+                                  onChange={e => {
+                                    const raw = e.target.value;
+                                    if (raw === '' || raw === '0') {
+                                      setQty(fi.id, 0);
+                                      return;
+                                    }
+                                    const parsed = parseInt(raw, 10);
+                                    if (!isNaN(parsed) && parsed >= 0) {
+                                      // Snap to nearest bundle multiple if needed
+                                      const step = fi.defaultQuantity > 1 ? fi.defaultQuantity : 1;
+                                      const snapped = Math.round(parsed / step) * step;
+                                      setQty(fi.id, Math.max(0, snapped));
+                                    }
+                                  }}
+                                  className="qty-num bg-transparent border-0 text-center text-white font-semibold text-sm outline-none focus:ring-1 focus:ring-violet-400/60 rounded-md"
+                                  style={{ width: 44, minWidth: 44, padding: '2px 4px' }}
+                                  aria-label={`Quantity for ${fi.name}`}
+                                />
                                 <button
                                   type="button"
                                   className="qty-btn"

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { BarChart2, Plus, CalendarX } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
+import { useAuth } from '../state/AuthContext';
 import { CateringScheduler } from '../components/CateringScheduler';
 import { EventCard } from '../components/EventCard';
 import { AddEventDialog } from '../components/AddEventDialog';
@@ -10,6 +11,11 @@ import { Button3D } from '../components/Button3D';
 import { GlassCard } from '../components/GlassCard';
 import { todayStr, formatDisplayDate } from '../lib/dates';
 import { getOccurrencesOnDate } from '../lib/recurrence';
+import {
+  pushEventToCloud,
+  deleteEventFromCloud,
+  uploadAllEventsToCloud,
+} from '../lib/cloudSync';
 import type { CateringEvent } from '../types';
 
 function nanoid(): string {
@@ -17,7 +23,8 @@ function nanoid(): string {
 }
 
 export function SchedulePage() {
-  const { state, dispatch } = useAppContext();
+  const { state, dispatch, cloudConfig, syncNow } = useAppContext();
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showDialog,   setShowDialog]   = useState(false);
   const [editingEvent, setEditingEvent] = useState<CateringEvent | null>(null);
@@ -29,33 +36,58 @@ export function SchedulePage() {
     [state.events, selectedDate]
   );
 
-  function handleAddEvent(data: Omit<CateringEvent, 'id' | 'createdAt'>) {
-    dispatch({
-      type: 'ADD_EVENT',
-      payload: { id: nanoid(), ...data, createdAt: new Date().toISOString() },
-    });
+  const staffInfo = user
+    ? { username: user.username, phoneNumber: user.phoneNumber }
+    : undefined;
+
+  async function handleAddEvent(data: Omit<CateringEvent, 'id' | 'createdAt'>) {
+    const newEvent: CateringEvent = {
+      id: nanoid(),
+      ...data,
+      createdAt: new Date().toISOString(),
+      createdBy: staffInfo,
+      updatedAt: new Date().toISOString(),
+    };
+    dispatch({ type: 'ADD_EVENT', payload: newEvent });
     setShowDialog(false);
+    // Push new event to cloud immediately
+    await pushEventToCloud(newEvent, cloudConfig, user?.username);
+    // Upload full list to keep cloud consistent
+    const updatedEvents = [newEvent, ...state.events];
+    await uploadAllEventsToCloud(updatedEvents, cloudConfig);
+    syncNow();
   }
 
-  function handleEditEvent(data: Omit<CateringEvent, 'id' | 'createdAt'>, scope?: 'this' | 'all') {
+  async function handleEditEvent(data: Omit<CateringEvent, 'id' | 'createdAt'>, scope?: 'this' | 'all') {
     if (!editingEvent) return;
+    const updatedEvent: CateringEvent = {
+      ...editingEvent,
+      ...data,
+      updatedBy: staffInfo,
+      updatedAt: new Date().toISOString(),
+    };
     if (scope === 'all') {
-      dispatch({ type: 'UPDATE_EVENT_SERIES', payload: { ...editingEvent, ...data } });
+      dispatch({ type: 'UPDATE_EVENT_SERIES', payload: updatedEvent });
     } else {
-      dispatch({ type: 'UPDATE_EVENT', payload: { ...editingEvent, ...data } });
+      dispatch({ type: 'UPDATE_EVENT', payload: updatedEvent });
     }
     setEditingEvent(null);
+    await pushEventToCloud(updatedEvent, cloudConfig, user?.username);
+    syncNow();
   }
 
-  function handleDeleteEvent(scope: 'this' | 'all') {
+  async function handleDeleteEvent(scope: 'this' | 'all') {
     if (!deleteConfirm) return;
+    const idToDelete = deleteConfirm.id;
     if (scope === 'all' || !deleteConfirm.recurrence) {
-      dispatch({ type: 'DELETE_EVENT_SERIES', payload: { id: deleteConfirm.id } });
+      dispatch({ type: 'DELETE_EVENT_SERIES', payload: { id: idToDelete } });
     } else {
-      dispatch({ type: 'DELETE_EVENT', payload: { id: deleteConfirm.id } });
+      dispatch({ type: 'DELETE_EVENT', payload: { id: idToDelete } });
     }
     setDeleteConfirm(null);
     setEditingEvent(null);
+    await deleteEventFromCloud(idToDelete, cloudConfig, user?.username);
+    syncNow();
   }
 
   return (
@@ -149,7 +181,7 @@ export function SchedulePage() {
         />
       )}
 
-      {/* Delete confirmation (non-recurring) */}
+      {/* Delete confirmation */}
       {deleteConfirm && !editingEvent && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"

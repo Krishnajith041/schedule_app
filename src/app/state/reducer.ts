@@ -80,6 +80,23 @@ export function reducer(state: AppState, action: AppAction): AppState {
         ),
       };
 
+    // ── Cloud & Multi-User Sync ──────────────────────────────────────────────
+    case 'MERGE_REMOTE_EVENTS': {
+      const remoteEvents = action.payload.events || [];
+      const remoteIds = new Set(remoteEvents.map(e => e.id));
+      // Keep any local events created very recently that might not have pushed yet
+      const recentLocalPending = state.events.filter(e => {
+        if (remoteIds.has(e.id)) return false;
+        const createdMs = new Date(e.createdAt || 0).getTime();
+        // If created within the last 15 seconds, keep it so it doesn't get wiped before push finishes
+        return Date.now() - createdMs < 15000;
+      });
+      return {
+        ...state,
+        events: [...remoteEvents, ...recentLocalPending],
+      };
+    }
+
     // ── Maintenance ──────────────────────────────────────────────────────────
     case 'PURGE_OLD_EVENTS':
       return {

@@ -458,3 +458,14 @@ h1, h2, h3, h4, h5, h6, .font-display {
   font-weight: 600;
   color: #f1f5f9;
 }
+/* Hide browser number spinners on qty input */
+.qty-stepper input[type="number"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.qty-stepper input[type="number"]::-webkit-inner-spin-button,
+.qty-stepper input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

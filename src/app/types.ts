@@ -41,6 +41,26 @@ export interface CateringEvent {
   items: EventFoodItem[];
   recurrence?: RecurrenceRule;
   createdAt: string;
+  createdBy?: {
+    username: string;
+    phoneNumber?: string;
+  };
+  updatedBy?: {
+    username: string;
+    phoneNumber?: string;
+  };
+  updatedAt?: string;
+}
+
+// ─── Cloud Sync Configuration ──────────────────────────────────────────────
+
+export interface CloudSyncConfig {
+  enabled: boolean;
+  workspaceId: string;
+  firebaseUrl: string;
+  autoSyncIntervalMs: number;
+  lastSyncedAt?: string;
+  lastSyncedStaff?: string;
 }
 
 // ─── App State ──────────────────────────────────────────────────────────────
@@ -68,6 +88,8 @@ export type AppAction =
   | { type: 'DELETE_EVENT';           payload: { id: string } }
   | { type: 'DELETE_EVENT_SERIES';    payload: { id: string } }
   | { type: 'UPDATE_EVENT_SERIES';    payload: CateringEvent }
+  // Cloud & Multi-User Sync
+  | { type: 'MERGE_REMOTE_EVENTS'; payload: { events: CateringEvent[]; sourceStaff?: string } }
   // Maintenance
   | { type: 'PURGE_OLD_EVENTS' }
   | { type: 'LOAD_STATE'; payload: AppState };
@@ -77,4 +99,12 @@ export type AppAction =
 export interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
+  // Cloud multi-user sync
+  cloudConfig: CloudSyncConfig;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error' | 'disabled';
+  lastSyncedAt?: string;
+  updateCloudConfig: (cfg: CloudSyncConfig) => void;
+  syncNow: () => Promise<void>;
+  notification: { id: string; message: string; staff?: string; type: 'info' | 'success' } | null;
+  dismissNotification: () => void;
 }

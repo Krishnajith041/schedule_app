@@ -1,4 +1,4 @@
-import { Clock, MapPin, Users, Repeat, Pencil, Trash2 } from 'lucide-react';
+import { Clock, MapPin, Users, Repeat, Pencil, Trash2, UserCheck } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { formatINR } from '../lib/currency';
 import { calcLineCost } from '../lib/cost';
@@ -119,6 +119,18 @@ export function EventCard({ event, occurrenceDate, foodItems, onEdit, onDelete }
         <p className="text-xs text-white/40 mt-2 border-t border-white/5 pt-2 break-words">
           {event.notes}
         </p>
+      )}
+
+      {/* Staff attribution */}
+      {(event.createdBy || event.updatedBy) && (
+        <div className="flex items-center gap-1.5 mt-2 border-t border-white/5 pt-2">
+          <UserCheck size={11} className="text-violet-400 flex-shrink-0" />
+          <span className="text-[11px] text-white/40">
+            {event.updatedBy
+              ? `Updated by ${event.updatedBy.username}`
+              : `Added by ${event.createdBy?.username}`}
+          </span>
+        </div>
       )}
     </GlassCard>
   );
