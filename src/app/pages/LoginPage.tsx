@@ -115,11 +115,11 @@ export function LoginPage() {
         } else {
           setIsSubmitting(false);
           if (result.reason === 'not_found') {
-            setErrors({ general: result.message });
+            setErrors({ general: result.message || 'Account not found.' });
           } else if (result.reason === 'wrong_password') {
-            setErrors({ password: result.message });
+            setErrors({ password: result.message || 'Incorrect password.' });
           } else {
-            setErrors({ general: result.message });
+            setErrors({ general: result.message || 'Sign in failed.' });
           }
         }
       } else {
@@ -140,9 +140,9 @@ export function LoginPage() {
         } else {
           setIsSubmitting(false);
           if (result.reason === 'user_exists') {
-            setErrors({ username: result.message });
+            setErrors({ username: result.message || 'Username already exists.' });
           } else {
-            setErrors({ general: result.message });
+            setErrors({ general: result.message || 'Registration failed.' });
           }
         }
       }

@@ -18,13 +18,11 @@ export interface AuthUser {
   loginTime: string;
 }
 
-export type LoginResult =
-  | { success: true }
-  | {
-      success: false;
-      reason: 'not_found' | 'wrong_password' | 'wrong_phone' | 'user_exists' | 'invalid_input';
-      message: string;
-    };
+export interface LoginResult {
+  success: boolean;
+  reason?: 'not_found' | 'wrong_password' | 'wrong_phone' | 'user_exists' | 'invalid_input';
+  message?: string;
+}
 
 export interface AuthContextValue {
   user: AuthUser | null;
