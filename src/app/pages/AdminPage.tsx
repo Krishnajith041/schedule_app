@@ -283,7 +283,7 @@ export function AdminPage() {
           </div>
         )}
 
-        <form onSubmit={handleCreateUser} className="space-y-4">
+        <form onSubmit={handleCreateUser} autoComplete="off" className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Username */}
             <div>
@@ -293,9 +293,14 @@ export function AdminPage() {
               </label>
               <input
                 type="text"
+                name="admin_user_input"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                placeholder="e.g. chef_ravi"
+                placeholder="user name"
                 required
                 className="glass-input text-sm"
               />
@@ -309,9 +314,14 @@ export function AdminPage() {
               </label>
               <input
                 type="password"
+                name="admin_pass_input"
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
+                placeholder="password"
                 required
                 className="glass-input text-sm"
               />
@@ -325,9 +335,14 @@ export function AdminPage() {
               </label>
               <input
                 type="tel"
+                name="admin_phone_input"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
-                placeholder="e.g. 9876543210"
+                placeholder="phone number"
                 required
                 className="glass-input text-sm"
               />

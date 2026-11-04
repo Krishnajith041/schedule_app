@@ -8,6 +8,7 @@ import {
 } from './AuthContext';
 import {
   getInitialCloudConfig,
+  saveCloudSyncConfig,
   fetchUsersFromCloud,
   pushUsersToCloud,
   onBroadcastUpdate,
@@ -318,7 +319,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveLocalUsers(updatedUsers);
       setAllUsers(updatedUsers);
 
-      if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+      // Automatically enable and connect to cloud sync upon registration
+      if (!cloudConfig.enabled) {
+        cloudConfig.enabled = true;
+        saveCloudSyncConfig(cloudConfig);
+      }
+
+      if (cloudConfig.firebaseUrl) {
         pushUsersToCloud(updatedUsers, cloudConfig);
       }
 
@@ -386,8 +393,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveLocalUsers(updated);
       setAllUsers(updated);
 
+      // Automatically enable and connect to cloud sync
       const cloudConfig = getInitialCloudConfig();
-      if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+      if (!cloudConfig.enabled) {
+        cloudConfig.enabled = true;
+        saveCloudSyncConfig(cloudConfig);
+      }
+
+      if (cloudConfig.firebaseUrl) {
         pushUsersToCloud(updated, cloudConfig);
       }
 

@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChefHat,
   X,
+  Cloud,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { GlassCard } from '../components/GlassCard';
@@ -223,8 +224,8 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          {/* Form with autocomplete disabled to prevent showing recently logged in names */}
+          <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">
             {/* 1. User Name */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -254,8 +255,14 @@ export function LoginPage() {
                 </div>
                 <input
                   id="auth-username"
+                  name="cater_user_input"
                   type="text"
-                  autoComplete="username"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
                   value={username}
                   onChange={(e) => {
                     setUsername(e.target.value);
@@ -263,7 +270,7 @@ export function LoginPage() {
                       setErrors((prev) => ({ ...prev, username: undefined, general: undefined }));
                     }
                   }}
-                  placeholder={mode === 'signin' ? 'e.g. krishnajith or test' : 'Choose a username (min 3 chars)'}
+                  placeholder="user name"
                   className={`glass-input pl-10 pr-3 ${
                     errors.username ? 'border-red-500/60 focus:border-red-400' : ''
                   }`}
@@ -297,14 +304,20 @@ export function LoginPage() {
                 </div>
                 <input
                   id="auth-password"
+                  name="cater_pass_input"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
                   }}
-                  placeholder="••••••••"
+                  placeholder="password"
                   className={`glass-input pl-10 pr-10 ${
                     errors.password ? 'border-red-500/60 focus:border-red-400' : ''
                   }`}
@@ -348,14 +361,20 @@ export function LoginPage() {
                   </div>
                   <input
                     id="auth-phone"
+                    name="cater_phone_input"
                     type="tel"
-                    autoComplete="tel"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
                     value={phoneNumber}
                     onChange={(e) => {
                       setPhoneNumber(e.target.value);
                       if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
                     }}
-                    placeholder="e.g. 8089608409"
+                    placeholder="phone number"
                     className={`glass-input pl-10 pr-3 ${
                       errors.phoneNumber ? 'border-red-500/60 focus:border-red-400' : ''
                     }`}
@@ -368,9 +387,10 @@ export function LoginPage() {
                     <AlertCircle size={12} /> {errors.phoneNumber}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-white/40 mt-1">
-                    Used for staff identification in the schedule
-                  </p>
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1.5">
+                    <Cloud size={12} className="flex-shrink-0" />
+                    <span>Automatically connects to Team Cloud Sync upon registering</span>
+                  </div>
                 )}
               </div>
             )}
@@ -404,12 +424,12 @@ export function LoginPage() {
                 {authSuccess ? (
                   <>
                     <CheckCircle2 size={18} className="text-emerald-300 animate-bounce" />
-                    <span>{mode === 'signin' ? 'Signing in...' : 'Account created! Signing in...'}</span>
+                    <span>{mode === 'signin' ? 'Signing in...' : 'Account registered! Connecting...'}</span>
                   </>
                 ) : isSubmitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>{mode === 'signin' ? 'Verifying...' : 'Registering...'}</span>
+                    <span>{mode === 'signin' ? 'Verifying...' : 'Registering & Syncing...'}</span>
                   </>
                 ) : mode === 'signin' ? (
                   <>
