@@ -30,13 +30,16 @@ export function getInitialCloudConfig(): CloudSyncConfig {
 
   // 1. Check if team invite link parameters exist in URL (e.g. ?syncUrl=...&ws=...)
   try {
-    let search = window.location.search;
-    if (!search && window.location.hash.includes('?')) {
-      search = '?' + window.location.hash.split('?')[1];
+    const currentUrl = new URL(window.location.href);
+    let syncUrlParam = currentUrl.searchParams.get('syncUrl');
+    let wsParam = currentUrl.searchParams.get('ws');
+
+    if (!syncUrlParam && window.location.hash.includes('?')) {
+      const hashQuery = window.location.hash.substring(window.location.hash.indexOf('?') + 1);
+      const hashParams = new URLSearchParams(hashQuery);
+      syncUrlParam = hashParams.get('syncUrl');
+      wsParam = wsParam || hashParams.get('ws');
     }
-    const params = new URLSearchParams(search);
-    const syncUrlParam = params.get('syncUrl');
-    const wsParam = params.get('ws');
 
     if (syncUrlParam || wsParam) {
       const urlConfig: CloudSyncConfig = {

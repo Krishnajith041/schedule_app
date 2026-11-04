@@ -20,16 +20,26 @@ export interface AuthUser {
 
 export type LoginResult =
   | { success: true }
-  | { success: false; reason: 'not_found' | 'wrong_password' | 'wrong_phone'; message: string };
+  | {
+      success: false;
+      reason: 'not_found' | 'wrong_password' | 'wrong_phone' | 'user_exists' | 'invalid_input';
+      message: string;
+    };
 
 export interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (credentials: { username: string; phoneNumber: string; password: string }) => LoginResult;
+  login: (credentials: { username: string; password: string }) => Promise<LoginResult>;
+  signup: (data: { username: string; password: string; phoneNumber: string }) => Promise<LoginResult>;
   logout: () => void;
   // User Registry Management (Admin functions)
   allUsers: RegisteredUser[];
-  addUser: (newUser: { username: string; phoneNumber: string; password: string; role: UserRole }) => { success: boolean; error?: string };
+  addUser: (newUser: {
+    username: string;
+    phoneNumber: string;
+    password: string;
+    role: UserRole;
+  }) => { success: boolean; error?: string };
   updateUserRole: (username: string, role: UserRole) => void;
   deleteUser: (username: string) => { success: boolean; error?: string };
 }

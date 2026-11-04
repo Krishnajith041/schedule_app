@@ -139,26 +139,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    (credentials: {
+    async (credentials: {
       username: string;
-      phoneNumber: string;
       password: string;
-    }): LoginResult => {
+    }): Promise<LoginResult> => {
       const trimmedUser = credentials.username.trim();
       const trimmedPass = credentials.password;
-      const cleanPhone = normalizePhone(credentials.phoneNumber);
 
-      const users = loadLocalUsers();
-      const found = users.find(
+      if (!trimmedUser) {
+        return { success: false, reason: 'invalid_input', message: 'User name is required.' };
+      }
+      if (!trimmedPass) {
+        return { success: false, reason: 'invalid_input', message: 'Password is required.' };
+      }
+
+      let users = loadLocalUsers();
+      let found = users.find(
         u => u.username.toLowerCase() === trimmedUser.toLowerCase()
       );
+
+      // If user not found in local storage, check if cloud sync has it
+      if (!found) {
+        const cloudConfig = getInitialCloudConfig();
+        if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+          try {
+            const remoteUsers = await fetchUsersFromCloud(cloudConfig);
+            if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+              const mergedMap = new Map<string, RegisteredUser>();
+              mergedMap.set(ROOT_ADMIN.username.toLowerCase(), ROOT_ADMIN);
+              users.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
+              (remoteUsers as RegisteredUser[]).forEach(u => {
+                if (u && u.username) {
+                  mergedMap.set(u.username.toLowerCase(), u);
+                }
+              });
+              users = Array.from(mergedMap.values());
+              saveLocalUsers(users);
+              setAllUsers(users);
+              found = users.find(
+                u => u.username.toLowerCase() === trimmedUser.toLowerCase()
+              );
+            }
+          } catch {
+            // ignore network issues during fallback
+          }
+        }
+      }
 
       if (!found) {
         return {
           success: false,
           reason: 'not_found',
-          message:
-            'No registered account found with this username. Only registered staff can access Catering Hub. Contact admin.',
+          message: `No registered account found with username "${trimmedUser}". Please check spelling, or tap Sign Up above to register a new account.`,
         };
       }
 
@@ -172,20 +204,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // Check phone number digits
-      const registeredPhone = normalizePhone(found.phoneNumber);
-      if (registeredPhone !== cleanPhone) {
-        return {
-          success: false,
-          reason: 'wrong_phone',
-          message: 'Phone number does not match registered account.',
-        };
-      }
-
       // Successful login
       const now = new Date().toISOString();
       const updatedUsers = users.map(u =>
-        u.username.toLowerCase() === found.username.toLowerCase()
+        u.username.toLowerCase() === found!.username.toLowerCase()
           ? { ...u, lastLoginAt: now }
           : u
       );
@@ -201,6 +223,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: found.username,
         phoneNumber: found.phoneNumber,
         role: found.role,
+        loginTime: now,
+      };
+
+      setUser(authUser);
+      try {
+        localStorage.setItem(STORAGE_AUTH_KEY, JSON.stringify(authUser));
+      } catch {
+        // Storage quota
+      }
+
+      return { success: true };
+    },
+    []
+  );
+
+  const signup = useCallback(
+    async (data: {
+      username: string;
+      password: string;
+      phoneNumber: string;
+    }): Promise<LoginResult> => {
+      const trimmedUser = data.username.trim();
+      const trimmedPass = data.password;
+      const cleanPhone = normalizePhone(data.phoneNumber);
+
+      if (!trimmedUser || trimmedUser.length < 3) {
+        return {
+          success: false,
+          reason: 'invalid_input',
+          message: 'User name must be at least 3 characters.',
+        };
+      }
+      if (!trimmedPass || trimmedPass.length < 6) {
+        return {
+          success: false,
+          reason: 'invalid_input',
+          message: 'Password must be at least 6 characters.',
+        };
+      }
+      if (!cleanPhone || cleanPhone.length < 7) {
+        return {
+          success: false,
+          reason: 'invalid_input',
+          message: 'Enter a valid phone number (at least 7 digits).',
+        };
+      }
+
+      let currentUsers = loadLocalUsers();
+
+      // Check remote users first if cloud enabled
+      const cloudConfig = getInitialCloudConfig();
+      if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+        try {
+          const remoteUsers = await fetchUsersFromCloud(cloudConfig);
+          if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+            const mergedMap = new Map<string, RegisteredUser>();
+            mergedMap.set(ROOT_ADMIN.username.toLowerCase(), ROOT_ADMIN);
+            currentUsers.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
+            (remoteUsers as RegisteredUser[]).forEach(u => {
+              if (u && u.username) mergedMap.set(u.username.toLowerCase(), u);
+            });
+            currentUsers = Array.from(mergedMap.values());
+            saveLocalUsers(currentUsers);
+            setAllUsers(currentUsers);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const existing = currentUsers.find(
+        u => u.username.toLowerCase() === trimmedUser.toLowerCase()
+      );
+      if (existing) {
+        return {
+          success: false,
+          reason: 'user_exists',
+          message: `Username "${trimmedUser}" is already registered. Please switch to Sign In.`,
+        };
+      }
+
+      const now = new Date().toISOString();
+      const newUser: RegisteredUser = {
+        username: trimmedUser,
+        passwordHash: btoa(trimmedPass),
+        phoneNumber: data.phoneNumber.trim(),
+        role: 'staff', // New public registrations get Staff role
+        createdAt: now,
+        lastLoginAt: now,
+      };
+
+      const updatedUsers = [...currentUsers, newUser];
+      saveLocalUsers(updatedUsers);
+      setAllUsers(updatedUsers);
+
+      if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+        pushUsersToCloud(updatedUsers, cloudConfig);
+      }
+
+      const authUser: AuthUser = {
+        username: newUser.username,
+        phoneNumber: newUser.phoneNumber,
+        role: newUser.role,
         loginTime: now,
       };
 
@@ -336,6 +461,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         login,
+        signup,
         logout,
         allUsers,
         addUser,

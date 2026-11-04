@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   LogIn,
+  UserPlus,
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
@@ -18,9 +19,11 @@ import { GlassCard } from '../components/GlassCard';
 import { Button3D } from '../components/Button3D';
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, signup, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +38,7 @@ export function LoginPage() {
     general?: string;
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [authSuccess, setAuthSuccess] = useState(false);
 
   // If already logged in, redirect to intended page or home
   useEffect(() => {
@@ -45,6 +48,11 @@ export function LoginPage() {
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, isSubmitting, location.state, navigate]);
+
+  const switchMode = (newMode: 'signin' | 'signup') => {
+    setMode(newMode);
+    setErrors({});
+  };
 
   const validate = () => {
     const newErrors: typeof errors = {};
@@ -64,20 +72,22 @@ export function LoginPage() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    // 3. Phone Number validation
-    const cleanPhone = phoneNumber.replace(/[\s\-()]/g, '');
-    const phoneDigits = cleanPhone.replace(/^\+/, '');
-    if (!phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^\+?[0-9]{7,15}$/.test(cleanPhone) || phoneDigits.length < 7) {
-      newErrors.phoneNumber = 'Enter a valid phone number (at least 7 digits)';
+    // 3. Phone Number validation (ONLY for Sign Up)
+    if (mode === 'signup') {
+      const cleanPhone = phoneNumber.replace(/[\s\-()]/g, '');
+      const phoneDigits = cleanPhone.replace(/^\+/, '');
+      if (!phoneNumber.trim()) {
+        newErrors.phoneNumber = 'Phone number is required for new registration';
+      } else if (!/^\+?[0-9]{7,15}$/.test(cleanPhone) || phoneDigits.length < 7) {
+        newErrors.phoneNumber = 'Enter a valid phone number (at least 7 digits)';
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -87,31 +97,58 @@ export function LoginPage() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const result = login({
-        username,
-        phoneNumber,
-        password,
-      });
+    try {
+      if (mode === 'signin') {
+        const result = await login({
+          username,
+          password,
+        });
 
-      if (result.success) {
-        setLoginSuccess(true);
-        setTimeout(() => {
-          const destination =
-            (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
-          navigate(destination, { replace: true });
-        }, 500);
+        if (result.success) {
+          setAuthSuccess(true);
+          setTimeout(() => {
+            const destination =
+              (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+            navigate(destination, { replace: true });
+          }, 450);
+        } else {
+          setIsSubmitting(false);
+          if (result.reason === 'not_found') {
+            setErrors({ general: result.message });
+          } else if (result.reason === 'wrong_password') {
+            setErrors({ password: result.message });
+          } else {
+            setErrors({ general: result.message });
+          }
+        }
       } else {
-        setIsSubmitting(false);
-        if (result.reason === 'not_found') {
-          setErrors({ general: result.message });
-        } else if (result.reason === 'wrong_password') {
-          setErrors({ password: result.message });
-        } else if (result.reason === 'wrong_phone') {
-          setErrors({ phoneNumber: result.message });
+        // Sign Up
+        const result = await signup({
+          username,
+          password,
+          phoneNumber,
+        });
+
+        if (result.success) {
+          setAuthSuccess(true);
+          setTimeout(() => {
+            const destination =
+              (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+            navigate(destination, { replace: true });
+          }, 450);
+        } else {
+          setIsSubmitting(false);
+          if (result.reason === 'user_exists') {
+            setErrors({ username: result.message });
+          } else {
+            setErrors({ general: result.message });
+          }
         }
       }
-    }, 450);
+    } catch {
+      setIsSubmitting(false);
+      setErrors({ general: 'An unexpected error occurred. Please try again.' });
+    }
   };
 
   return (
@@ -121,11 +158,11 @@ export function LoginPage() {
       <div className="glow-orb glow-orb-2" aria-hidden />
       <div className="glow-orb glow-orb-3" aria-hidden />
 
-      {/* Main Login Card */}
+      {/* Main Auth Card */}
       <div className="relative z-10 w-full max-w-md my-8 animate-fade-in-up">
         <GlassCard className="p-6 sm:p-8 border border-white/15 shadow-2xl backdrop-blur-xl">
           {/* Header & Logo */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-5">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-lg shadow-violet-500/30 mb-3 border border-white/20">
               <ChefHat size={30} strokeWidth={2.2} />
             </div>
@@ -133,21 +170,56 @@ export function LoginPage() {
               Catering Hub
             </h1>
             <p className="text-sm text-white/60 mt-1">
-              Sign in with your registered staff credentials
+              {mode === 'signin'
+                ? 'Sign in to access events & schedule'
+                : 'Create an account to join the catering staff'}
             </p>
           </div>
 
-          {/* Registered access notice */}
-          <div className="mb-5 flex items-center gap-2 p-2.5 rounded-xl bg-violet-950/30 border border-violet-500/20 text-xs text-violet-200/80">
-            <ShieldCheck size={16} className="text-emerald-400 flex-shrink-0" />
-            <span>Authorized staff only. Access is restricted to registered accounts.</span>
+          {/* Mode Switcher Tabs */}
+          <div className="flex rounded-xl bg-white/5 p-1 mb-5 border border-white/10">
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'signin'
+                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <LogIn size={14} />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('signup')}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'signup'
+                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <UserPlus size={14} />
+              <span>Sign Up</span>
+            </button>
           </div>
 
           {/* General Error Banner */}
           {errors.general && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center gap-2.5 text-red-200 text-xs animate-fade-in">
-              <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-              <span>{errors.general}</span>
+            <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 flex items-start gap-2.5 text-red-200 text-xs animate-fade-in">
+              <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <span>{errors.general}</span>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('signup')}
+                    className="block text-violet-300 hover:text-white font-semibold underline underline-offset-2 mt-1 cursor-pointer"
+                  >
+                    Tap here to Sign Up instead
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -157,7 +229,7 @@ export function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label
-                  htmlFor="login-username"
+                  htmlFor="auth-username"
                   className="text-xs font-semibold uppercase tracking-wider text-white/80 flex items-center gap-1.5"
                 >
                   <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500/30 text-violet-300 text-[10px] font-bold">
@@ -181,7 +253,7 @@ export function LoginPage() {
                   <User size={18} />
                 </div>
                 <input
-                  id="login-username"
+                  id="auth-username"
                   type="text"
                   autoComplete="username"
                   value={username}
@@ -191,7 +263,7 @@ export function LoginPage() {
                       setErrors((prev) => ({ ...prev, username: undefined, general: undefined }));
                     }
                   }}
-                  placeholder="e.g. krishnajith"
+                  placeholder={mode === 'signin' ? 'e.g. krishnajith or test' : 'Choose a username (min 3 chars)'}
                   className={`glass-input pl-10 pr-3 ${
                     errors.username ? 'border-red-500/60 focus:border-red-400' : ''
                   }`}
@@ -210,7 +282,7 @@ export function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label
-                  htmlFor="login-password"
+                  htmlFor="auth-password"
                   className="text-xs font-semibold uppercase tracking-wider text-white/80 flex items-center gap-1.5"
                 >
                   <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500/30 text-violet-300 text-[10px] font-bold">
@@ -224,9 +296,9 @@ export function LoginPage() {
                   <Lock size={18} />
                 </div>
                 <input
-                  id="login-password"
+                  id="auth-password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -256,46 +328,52 @@ export function LoginPage() {
               )}
             </div>
 
-            {/* 3. Phone Number */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="login-phone"
-                  className="text-xs font-semibold uppercase tracking-wider text-white/80 flex items-center gap-1.5"
-                >
-                  <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500/30 text-violet-300 text-[10px] font-bold">
-                    3
-                  </span>
-                  Phone Number
-                </label>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/40">
-                  <Phone size={18} />
+            {/* 3. Phone Number (ONLY shown for Sign Up) */}
+            {mode === 'signup' && (
+              <div className="animate-fade-in-up">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor="auth-phone"
+                    className="text-xs font-semibold uppercase tracking-wider text-white/80 flex items-center gap-1.5"
+                  >
+                    <span className="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500/30 text-violet-300 text-[10px] font-bold">
+                      3
+                    </span>
+                    Phone Number
+                  </label>
                 </div>
-                <input
-                  id="login-phone"
-                  type="tel"
-                  autoComplete="tel"
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
-                    if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
-                  }}
-                  placeholder="e.g. 8089608409"
-                  className={`glass-input pl-10 pr-3 ${
-                    errors.phoneNumber ? 'border-red-500/60 focus:border-red-400' : ''
-                  }`}
-                  aria-invalid={!!errors.phoneNumber}
-                  aria-describedby={errors.phoneNumber ? 'phone-error' : undefined}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/40">
+                    <Phone size={18} />
+                  </div>
+                  <input
+                    id="auth-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value);
+                      if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
+                    }}
+                    placeholder="e.g. 8089608409"
+                    className={`glass-input pl-10 pr-3 ${
+                      errors.phoneNumber ? 'border-red-500/60 focus:border-red-400' : ''
+                    }`}
+                    aria-invalid={!!errors.phoneNumber}
+                    aria-describedby={errors.phoneNumber ? 'phone-error' : undefined}
+                  />
+                </div>
+                {errors.phoneNumber ? (
+                  <p id="phone-error" className="text-red-300 text-xs mt-1.5 flex items-center gap-1">
+                    <AlertCircle size={12} /> {errors.phoneNumber}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-white/40 mt-1">
+                    Used for staff identification in the schedule
+                  </p>
+                )}
               </div>
-              {errors.phoneNumber && (
-                <p id="phone-error" className="text-red-300 text-xs mt-1.5 flex items-center gap-1">
-                  <AlertCircle size={12} /> {errors.phoneNumber}
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Remember Me */}
             <div className="flex items-center justify-between pt-1">
@@ -311,7 +389,7 @@ export function LoginPage() {
 
               <span className="text-[11px] text-white/40 flex items-center gap-1">
                 <ShieldCheck size={13} className="text-emerald-400" />
-                <span>Encrypted</span>
+                <span>Protected</span>
               </span>
             </div>
 
@@ -320,36 +398,59 @@ export function LoginPage() {
               <Button3D
                 variant="primary"
                 type="submit"
-                disabled={isSubmitting || loginSuccess}
+                disabled={isSubmitting || authSuccess}
                 className="w-full justify-center text-sm font-semibold py-3 gap-2"
               >
-                {loginSuccess ? (
+                {authSuccess ? (
                   <>
                     <CheckCircle2 size={18} className="text-emerald-300 animate-bounce" />
-                    <span>Signing in...</span>
+                    <span>{mode === 'signin' ? 'Signing in...' : 'Account created! Signing in...'}</span>
                   </>
                 ) : isSubmitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Verifying details...</span>
+                    <span>{mode === 'signin' ? 'Verifying...' : 'Registering...'}</span>
                   </>
-                ) : (
+                ) : mode === 'signin' ? (
                   <>
                     <LogIn size={18} />
                     <span>Sign In</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={18} />
+                    <span>Create Account (Sign Up)</span>
                   </>
                 )}
               </Button3D>
             </div>
           </form>
 
-          {/* Footer note */}
-          <div className="mt-6 pt-5 border-t border-white/10 text-center">
-            <p className="text-xs text-white/40 flex items-center justify-center gap-1.5">
-              <span>Catering Staff Portal</span>
-              <span>•</span>
-              <span>Admin & Staff Access</span>
-            </p>
+          {/* Toggle between Sign In and Sign Up */}
+          <div className="mt-5 pt-4 border-t border-white/10 text-center text-xs text-white/60">
+            {mode === 'signin' ? (
+              <p>
+                New staff member?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('signup')}
+                  className="text-violet-300 hover:text-white font-semibold underline underline-offset-2 ml-1 cursor-pointer"
+                >
+                  Create an account (Sign Up)
+                </button>
+              </p>
+            ) : (
+              <p>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('signin')}
+                  className="text-violet-300 hover:text-white font-semibold underline underline-offset-2 ml-1 cursor-pointer"
+                >
+                  Sign In here
+                </button>
+              </p>
+            )}
           </div>
         </GlassCard>
       </div>
