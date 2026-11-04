@@ -10,9 +10,10 @@ interface EventCardProps {
   foodItems: FoodItem[];
   onEdit:   (event: CateringEvent) => void;
   onDelete: (event: CateringEvent) => void;
+  readOnly?: boolean;
 }
 
-export function EventCard({ event, occurrenceDate, foodItems, onEdit, onDelete }: EventCardProps) {
+export function EventCard({ event, occurrenceDate, foodItems, onEdit, onDelete, readOnly = false }: EventCardProps) {
   const foodMap = new Map(foodItems.map(fi => [fi.id, fi]));
 
   const total = event.items.reduce((sum, ei) => {
@@ -47,26 +48,28 @@ export function EventCard({ event, occurrenceDate, foodItems, onEdit, onDelete }
           )}
         </div>
 
-        <div className="flex gap-1.5 flex-shrink-0">
-          {!isRecurringOccurrence && (
+        {!readOnly && (
+          <div className="flex gap-1.5 flex-shrink-0">
+            {!isRecurringOccurrence && (
+              <button
+                onClick={() => onEdit(event)}
+                className="btn-3d btn-icon btn-secondary"
+                aria-label={`Edit ${event.title}`}
+                style={{ minWidth: 34, minHeight: 34, padding: '6px' }}
+              >
+                <Pencil size={14} />
+              </button>
+            )}
             <button
-              onClick={() => onEdit(event)}
-              className="btn-3d btn-icon btn-secondary"
-              aria-label={`Edit ${event.title}`}
+              onClick={() => onDelete(event)}
+              className="btn-3d btn-icon btn-danger"
+              aria-label={`Delete ${event.title}`}
               style={{ minWidth: 34, minHeight: 34, padding: '6px' }}
             >
-              <Pencil size={14} />
+              <Trash2 size={14} />
             </button>
-          )}
-          <button
-            onClick={() => onDelete(event)}
-            className="btn-3d btn-icon btn-danger"
-            aria-label={`Delete ${event.title}`}
-            style={{ minWidth: 34, minHeight: 34, padding: '6px' }}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Meta row */}

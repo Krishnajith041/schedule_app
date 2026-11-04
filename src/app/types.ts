@@ -90,6 +90,7 @@ export type AppAction =
   | { type: 'UPDATE_EVENT_SERIES';    payload: CateringEvent }
   // Cloud & Multi-User Sync
   | { type: 'MERGE_REMOTE_EVENTS'; payload: { events: CateringEvent[]; sourceStaff?: string } }
+  | { type: 'MERGE_REMOTE_MENU';   payload: { categories: FoodCategory[]; foodItems: FoodItem[] } }
   // Maintenance
   | { type: 'PURGE_OLD_EVENTS' }
   | { type: 'LOAD_STATE'; payload: AppState };

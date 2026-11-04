@@ -5,6 +5,7 @@ import { FoodItemsPage }     from './pages/FoodItemsPage';
 import { UpcomingEventsPage} from './pages/UpcomingEventsPage';
 import { AnalysisPage }      from './pages/AnalysisPage';
 import { LoginPage }         from './pages/LoginPage';
+import { AdminPage }         from './pages/AdminPage';
 
 export const router = createHashRouter([
   {
@@ -19,6 +20,7 @@ export const router = createHashRouter([
       { path: 'food',       element: <FoodItemsPage /> },
       { path: 'upcoming',   element: <UpcomingEventsPage /> },
       { path: 'analysis',   element: <AnalysisPage /> },
+      { path: 'admin',      element: <AdminPage /> },
     ],
   },
 ]);

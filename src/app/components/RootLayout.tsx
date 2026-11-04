@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { UtensilsCrossed, LogOut, Users, Cloud, CloudOff, RefreshCw, X, CheckCircle2 } from 'lucide-react';
+import {
+  UtensilsCrossed,
+  LogOut,
+  Users,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  X,
+  CheckCircle2,
+  Shield,
+  Eye,
+  CalendarPlus,
+} from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { useAppContext } from '../state/AppContext';
 import { BottomNav } from '../components/BottomNav';
@@ -9,10 +21,19 @@ import { TeamSyncModal } from '../components/TeamSyncModal';
 export function RootLayout() {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
-  const { cloudConfig, syncStatus, lastSyncedAt, updateCloudConfig, syncNow, notification, dismissNotification } =
-    useAppContext();
+  const {
+    cloudConfig,
+    syncStatus,
+    lastSyncedAt,
+    updateCloudConfig,
+    syncNow,
+    notification,
+    dismissNotification,
+  } = useAppContext();
 
   const [showSyncModal, setShowSyncModal] = useState(false);
+
+  const isAdmin = user?.role === 'admin';
 
   // Auto-dismiss notifications after 4 seconds
   useEffect(() => {
@@ -42,10 +63,24 @@ export function RootLayout() {
       : syncStatus === 'syncing'
       ? 'Syncing…'
       : syncStatus === 'error'
-      ? 'Sync error — tap to retry'
+      ? 'Sync error'
       : cloudConfig.enabled
       ? 'Connected'
-      : 'Local only — tap to set up team sync';
+      : 'Local only';
+
+  const roleBadge = user?.role === 'admin' ? (
+    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center gap-0.5 flex-shrink-0">
+      <Shield size={10} /> Admin
+    </span>
+  ) : user?.role === 'staff' ? (
+    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-400/40 flex items-center gap-0.5 flex-shrink-0">
+      <CalendarPlus size={10} /> Staff
+    </span>
+  ) : (
+    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-500/20 text-slate-300 border border-slate-400/40 flex items-center gap-0.5 flex-shrink-0">
+      <Eye size={10} /> Viewer
+    </span>
+  );
 
   return (
     <div className="bg-app relative min-h-dvh flex flex-col">
@@ -57,70 +92,92 @@ export function RootLayout() {
       {/* Top Header */}
       <header className="sticky top-0 z-40 px-4 py-2.5 backdrop-blur-md bg-black/30 border-b border-white/10">
         <div className="mx-auto max-w-3xl flex items-center justify-between gap-2">
-          {/* Brand */}
+          {/* Brand & Sync indicator */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
               <UtensilsCrossed size={16} />
             </div>
             <div>
-              <div className="text-xs font-bold text-white tracking-wider font-display">CATERING HUB</div>
-              {/* Sync status badge */}
-              <button
-                type="button"
-                onClick={() => setShowSyncModal(true)}
-                title={syncTitle}
-                className="text-[10px] flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
-                  syncStatus === 'syncing' ? (
-                    <RefreshCw size={10} className={syncColor} />
-                  ) : syncStatus === 'error' ? (
-                    <CloudOff size={10} className={syncColor} />
+              <div className="text-xs font-bold text-white tracking-wider font-display">
+                CATERING HUB
+              </div>
+              {/* Sync status: only clickable button if admin; subtle text for non-admin */}
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSyncModal(true)}
+                  title={`${syncTitle} (Click to manage Team Sync)`}
+                  className="text-[10px] flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
+                    syncStatus === 'syncing' ? (
+                      <RefreshCw size={10} className={syncColor} />
+                    ) : syncStatus === 'error' ? (
+                      <CloudOff size={10} className={syncColor} />
+                    ) : (
+                      <Cloud size={10} className={syncColor} />
+                    )
                   ) : (
                     <Cloud size={10} className={syncColor} />
-                  )
-                ) : (
-                  <Cloud size={10} className={syncColor} />
-                )}
-                <span className={syncColor}>
-                  {cloudConfig.enabled && cloudConfig.firebaseUrl
-                    ? syncStatus === 'syncing'
-                      ? 'Syncing…'
-                      : syncStatus === 'error'
-                      ? 'Sync Error'
-                      : 'Team Sync'
-                    : 'Local Only'}
-                </span>
-              </button>
+                  )}
+                  <span className={syncColor}>
+                    {cloudConfig.enabled && cloudConfig.firebaseUrl
+                      ? syncStatus === 'syncing'
+                        ? 'Syncing…'
+                        : syncStatus === 'error'
+                        ? 'Sync Error'
+                        : 'Team Sync'
+                      : 'Local Only'}
+                  </span>
+                </button>
+              ) : (
+                <div title={syncTitle} className="text-[10px] flex items-center gap-1">
+                  {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
+                    syncStatus === 'syncing' ? (
+                      <RefreshCw size={10} className={syncColor} />
+                    ) : (
+                      <Cloud size={10} className={syncColor} />
+                    )
+                  ) : (
+                    <Cloud size={10} className="text-white/30" />
+                  )}
+                  <span className={syncColor}>
+                    {cloudConfig.enabled && cloudConfig.firebaseUrl
+                      ? syncStatus === 'syncing'
+                        ? 'Syncing…'
+                        : 'Live'
+                      : 'Offline'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right side: user pill + sync button + logout */}
+          {/* Right side: user pill + (admin-only team sync) + logout */}
           {user && (
             <div className="flex items-center gap-1.5 min-w-0">
-              {/* Team sync icon button */}
-              <button
-                type="button"
-                onClick={() => setShowSyncModal(true)}
-                title="Team Cloud Sync Settings"
-                className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer flex-shrink-0"
-                aria-label="Team sync settings"
-              >
-                <Users size={15} className="text-violet-300" />
-              </button>
+              {/* Team sync icon button (ONLY visible to admin) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowSyncModal(true)}
+                  title="Team Cloud Sync Settings (Admin)"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer flex-shrink-0"
+                  aria-label="Team sync settings"
+                >
+                  <Users size={15} className="text-amber-300" />
+                </button>
+              )}
 
-              {/* User pill */}
+              {/* User pill with Role */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/90 shadow-inner min-w-0">
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <span className="font-semibold text-white max-w-[80px] sm:max-w-[140px] truncate">
+                <span className="font-semibold text-white max-w-[70px] sm:max-w-[120px] truncate">
                   {user.username}
                 </span>
-                <span className="text-white/30 hidden sm:inline">•</span>
-                <span className="text-[11px] text-white/60 hidden sm:inline truncate max-w-[100px]">
-                  {user.phoneNumber}
-                </span>
+                {roleBadge}
               </div>
 
               {/* Logout */}
@@ -155,7 +212,9 @@ export function RootLayout() {
           <div className="glass-card px-4 py-3 border border-violet-500/30 shadow-xl flex items-start gap-3">
             <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white leading-tight">{notification.message}</p>
+              <p className="text-sm font-semibold text-white leading-tight">
+                {notification.message}
+              </p>
               {notification.staff && (
                 <p className="text-xs text-white/50 mt-0.5">
                   by <span className="text-violet-300">{notification.staff}</span>
@@ -166,6 +225,7 @@ export function RootLayout() {
               type="button"
               onClick={dismissNotification}
               className="text-white/40 hover:text-white cursor-pointer flex-shrink-0"
+              aria-label="Dismiss notification"
             >
               <X size={14} />
             </button>
@@ -173,8 +233,8 @@ export function RootLayout() {
         </div>
       )}
 
-      {/* ── Team Sync Modal ── */}
-      {showSyncModal && (
+      {/* ── Team Sync Modal (Admin Only) ── */}
+      {showSyncModal && isAdmin && (
         <TeamSyncModal
           config={cloudConfig}
           onSaveConfig={updateCloudConfig}

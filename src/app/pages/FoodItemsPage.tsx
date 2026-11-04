@@ -1,10 +1,12 @@
 import { useState, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, X, Check } from 'lucide-react';
+import { Plus, X, Check, Lock } from 'lucide-react';
 import { useAppContext } from '../state/AppContext';
+import { useAuth } from '../state/AuthContext';
 import { CategorySection } from '../components/CategorySection';
 import { Button3D } from '../components/Button3D';
 import { GlassCard } from '../components/GlassCard';
+import { pushMenuToCloud } from '../lib/cloudSync';
 import type { FoodCategory, FoodItem } from '../types';
 
 function nanoid(): string {
@@ -12,8 +14,11 @@ function nanoid(): string {
 }
 
 export function FoodItemsPage() {
-  const { state, dispatch } = useAppContext();
+  const { state, dispatch, cloudConfig, syncNow } = useAppContext();
+  const { user } = useAuth();
   const uid = useId();
+
+  const isAdmin = user?.role === 'admin';
 
   // New category form state
   const [showCatForm,   setShowCatForm]   = useState(false);
@@ -27,56 +32,96 @@ export function FoodItemsPage() {
   // Confirm delete
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'cat' | 'item'; id: string } | null>(null);
 
+  async function syncMenuToCloud(categories: FoodCategory[], foodItems: FoodItem[]) {
+    if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+      await pushMenuToCloud(categories, foodItems, cloudConfig, user?.username);
+      syncNow();
+    }
+  }
+
   function handleAddCategory() {
+    if (!isAdmin) return;
     const name = newCatName.trim();
     if (!name) { setCatError('Category name is required'); return; }
-    dispatch({
-      type: 'ADD_CATEGORY',
-      payload: { id: nanoid(), name, createdAt: new Date().toISOString() },
-    });
+
+    const newCategory: FoodCategory = {
+      id: nanoid(),
+      name,
+      createdAt: new Date().toISOString(),
+    };
+
+    dispatch({ type: 'ADD_CATEGORY', payload: newCategory });
     setNewCatName('');
     setShowCatForm(false);
     setCatError('');
+
+    const updatedCategories = [newCategory, ...state.categories];
+    syncMenuToCloud(updatedCategories, state.foodItems);
   }
 
   function handleEditCategory(cat: FoodCategory) {
+    if (!isAdmin) return;
     setEditingCat(cat);
     setEditCatName(cat.name);
   }
 
   function handleSaveEditCategory() {
-    if (!editingCat) return;
+    if (!isAdmin || !editingCat) return;
     const name = editCatName.trim();
     if (!name) return;
-    dispatch({ type: 'UPDATE_CATEGORY', payload: { ...editingCat, name } });
+
+    const updatedCat = { ...editingCat, name };
+    dispatch({ type: 'UPDATE_CATEGORY', payload: updatedCat });
     setEditingCat(null);
+
+    const updatedCategories = state.categories.map(c => c.id === updatedCat.id ? updatedCat : c);
+    syncMenuToCloud(updatedCategories, state.foodItems);
   }
 
   function handleDeleteCategory(id: string) {
+    if (!isAdmin) return;
     setConfirmDelete({ type: 'cat', id });
   }
 
   function handleAddItem(data: Omit<FoodItem, 'id' | 'createdAt'>) {
-    dispatch({
-      type: 'ADD_FOOD_ITEM',
-      payload: { id: nanoid(), ...data, createdAt: new Date().toISOString() },
-    });
+    if (!isAdmin) return;
+    const newItem: FoodItem = {
+      id: nanoid(),
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+
+    dispatch({ type: 'ADD_FOOD_ITEM', payload: newItem });
+    const updatedItems = [newItem, ...state.foodItems];
+    syncMenuToCloud(state.categories, updatedItems);
   }
 
   function handleEditItem(item: FoodItem) {
+    if (!isAdmin) return;
     dispatch({ type: 'UPDATE_FOOD_ITEM', payload: item });
+    const updatedItems = state.foodItems.map(fi => fi.id === item.id ? item : fi);
+    syncMenuToCloud(state.categories, updatedItems);
   }
 
   function handleDeleteItem(id: string) {
+    if (!isAdmin) return;
     setConfirmDelete({ type: 'item', id });
   }
 
   function confirmDeleteAction() {
-    if (!confirmDelete) return;
+    if (!isAdmin || !confirmDelete) return;
+
     if (confirmDelete.type === 'cat') {
-      dispatch({ type: 'DELETE_CATEGORY', payload: { id: confirmDelete.id } });
+      const catId = confirmDelete.id;
+      dispatch({ type: 'DELETE_CATEGORY', payload: { id: catId } });
+      const updatedCategories = state.categories.filter(c => c.id !== catId);
+      const updatedItems = state.foodItems.filter(fi => fi.categoryId !== catId);
+      syncMenuToCloud(updatedCategories, updatedItems);
     } else {
-      dispatch({ type: 'DELETE_FOOD_ITEM', payload: { id: confirmDelete.id } });
+      const itemId = confirmDelete.id;
+      dispatch({ type: 'DELETE_FOOD_ITEM', payload: { id: itemId } });
+      const updatedItems = state.foodItems.filter(fi => fi.id !== itemId);
+      syncMenuToCloud(state.categories, updatedItems);
     }
     setConfirmDelete(null);
   }
@@ -86,27 +131,39 @@ export function FoodItemsPage() {
     state.foodItems.filter(fi => fi.categoryId === catId);
 
   return (
-    <div className="page-content px-4 pt-6">
+    <div className="page-content px-4 pt-6 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">Food Items</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-white">Food Menu</h1>
+            {!isAdmin && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10 flex items-center gap-1">
+                <Lock size={10} /> Read Only
+              </span>
+            )}
+          </div>
           <p className="text-sm text-white/50 mt-0.5">
             {state.foodItems.length} items · {state.categories.length} categories
           </p>
         </div>
-        <Button3D
-          variant="primary"
-          onClick={() => setShowCatForm(true)}
-          className="btn-icon"
-          aria-label="Add category"
-        >
-          <Plus size={20} />
-        </Button3D>
+
+        {/* Add category button: only for Admin */}
+        {isAdmin && (
+          <Button3D
+            variant="primary"
+            onClick={() => setShowCatForm(true)}
+            className="btn-icon"
+            aria-label="Add category"
+            title="Add new category"
+          >
+            <Plus size={20} />
+          </Button3D>
+        )}
       </div>
 
-      {/* Add category form */}
-      {showCatForm && (
+      {/* Add category form (Admin only) */}
+      {isAdmin && showCatForm && (
         <GlassCard className="p-4 mb-4 animate-fade-in-up">
           <p className="font-display font-semibold text-white mb-3">New Category</p>
           <div className="flex gap-2">
@@ -138,7 +195,7 @@ export function FoodItemsPage() {
       <div className="flex flex-col gap-4">
         {state.categories.length === 0 ? (
           <GlassCard className="p-8 text-center">
-            <p className="text-white/40 text-sm">No categories yet. Add one above!</p>
+            <p className="text-white/40 text-sm">No categories yet.</p>
           </GlassCard>
         ) : (
           state.categories.map(cat => (
@@ -152,13 +209,14 @@ export function FoodItemsPage() {
               onAddItem={handleAddItem}
               onEditItem={handleEditItem}
               onDeleteItem={handleDeleteItem}
+              readOnly={!isAdmin}
             />
           ))
         )}
       </div>
 
-      {/* Edit category modal */}
-      {editingCat && createPortal(
+      {/* Edit category modal (Admin only) */}
+      {isAdmin && editingCat && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
@@ -187,8 +245,8 @@ export function FoodItemsPage() {
         document.body
       )}
 
-      {/* Confirm delete modal */}
-      {confirmDelete && createPortal(
+      {/* Confirm delete modal (Admin only) */}
+      {isAdmin && confirmDelete && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}

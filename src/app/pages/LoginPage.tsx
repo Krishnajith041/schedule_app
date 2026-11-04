@@ -8,11 +8,10 @@ import {
   EyeOff,
   LogIn,
   AlertCircle,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
   ChefHat,
-  X
+  X,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { GlassCard } from '../components/GlassCard';
@@ -41,7 +40,8 @@ export function LoginPage() {
   // If already logged in, redirect to intended page or home
   useEffect(() => {
     if (isAuthenticated && !isSubmitting) {
-      const destination = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+      const destination =
+        (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, isSubmitting, location.state, navigate]);
@@ -70,7 +70,7 @@ export function LoginPage() {
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
     } else if (!/^\+?[0-9]{7,15}$/.test(cleanPhone) || phoneDigits.length < 7) {
-      newErrors.phoneNumber = 'Enter a valid phone number (at least 7 to 15 digits)';
+      newErrors.phoneNumber = 'Enter a valid phone number (at least 7 digits)';
     }
 
     setErrors(newErrors);
@@ -87,27 +87,31 @@ export function LoginPage() {
 
     setIsSubmitting(true);
 
-    // Brief simulated verification transition for smooth UX
     setTimeout(() => {
-      login({
+      const result = login({
         username,
         phoneNumber,
         password,
       });
-      setLoginSuccess(true);
 
-      setTimeout(() => {
-        const destination = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
-        navigate(destination, { replace: true });
-      }, 500);
+      if (result.success) {
+        setLoginSuccess(true);
+        setTimeout(() => {
+          const destination =
+            (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+          navigate(destination, { replace: true });
+        }, 500);
+      } else {
+        setIsSubmitting(false);
+        if (result.reason === 'not_found') {
+          setErrors({ general: result.message });
+        } else if (result.reason === 'wrong_password') {
+          setErrors({ password: result.message });
+        } else if (result.reason === 'wrong_phone') {
+          setErrors({ phoneNumber: result.message });
+        }
+      }
     }, 450);
-  };
-
-  const handleQuickFillDemo = () => {
-    setUsername('chef_alexander');
-    setPassword('Catering@2026');
-    setPhoneNumber('+91 98765 43210');
-    setErrors({});
   };
 
   return (
@@ -129,23 +133,14 @@ export function LoginPage() {
               Catering Hub
             </h1>
             <p className="text-sm text-white/60 mt-1">
-              Sign in with your credentials to manage events & catering schedules
+              Sign in with your registered staff credentials
             </p>
           </div>
 
-          {/* Quick Demo Pill */}
-          <div className="mb-6 flex items-center justify-between p-2.5 rounded-xl bg-violet-950/40 border border-violet-500/20">
-            <div className="flex items-center gap-2 text-xs text-violet-200">
-              <Sparkles size={15} className="text-pink-400 flex-shrink-0 animate-pulse" />
-              <span>Need quick access?</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleQuickFillDemo}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-violet-600/40 hover:bg-violet-600/60 text-white transition-colors border border-violet-400/30 cursor-pointer"
-            >
-              Fill Demo Data
-            </button>
+          {/* Registered access notice */}
+          <div className="mb-5 flex items-center gap-2 p-2.5 rounded-xl bg-violet-950/30 border border-violet-500/20 text-xs text-violet-200/80">
+            <ShieldCheck size={16} className="text-emerald-400 flex-shrink-0" />
+            <span>Authorized staff only. Access is restricted to registered accounts.</span>
           </div>
 
           {/* General Error Banner */}
@@ -174,7 +169,7 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setUsername('')}
-                    className="text-white/40 hover:text-white text-xs flex items-center gap-0.5"
+                    className="text-white/40 hover:text-white text-xs flex items-center gap-0.5 cursor-pointer"
                     tabIndex={-1}
                   >
                     <X size={12} /> Clear
@@ -192,9 +187,11 @@ export function LoginPage() {
                   value={username}
                   onChange={(e) => {
                     setUsername(e.target.value);
-                    if (errors.username) setErrors(prev => ({ ...prev, username: undefined }));
+                    if (errors.username || errors.general) {
+                      setErrors((prev) => ({ ...prev, username: undefined, general: undefined }));
+                    }
                   }}
-                  placeholder="e.g. chef_alexander"
+                  placeholder="e.g. krishnajith"
                   className={`glass-input pl-10 pr-3 ${
                     errors.username ? 'border-red-500/60 focus:border-red-400' : ''
                   }`}
@@ -233,7 +230,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
                   }}
                   placeholder="••••••••"
                   className={`glass-input pl-10 pr-10 ${
@@ -244,7 +241,7 @@ export function LoginPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(prev => !prev)}
+                  onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/40 hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   tabIndex={-1}
@@ -283,9 +280,9 @@ export function LoginPage() {
                   value={phoneNumber}
                   onChange={(e) => {
                     setPhoneNumber(e.target.value);
-                    if (errors.phoneNumber) setErrors(prev => ({ ...prev, phoneNumber: undefined }));
+                    if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
                   }}
-                  placeholder="e.g. +91 98765 43210"
+                  placeholder="e.g. 8089608409"
                   className={`glass-input pl-10 pr-3 ${
                     errors.phoneNumber ? 'border-red-500/60 focus:border-red-400' : ''
                   }`}
@@ -314,7 +311,7 @@ export function LoginPage() {
 
               <span className="text-[11px] text-white/40 flex items-center gap-1">
                 <ShieldCheck size={13} className="text-emerald-400" />
-                <span>Protected</span>
+                <span>Encrypted</span>
               </span>
             </div>
 
@@ -351,7 +348,7 @@ export function LoginPage() {
             <p className="text-xs text-white/40 flex items-center justify-center gap-1.5">
               <span>Catering Staff Portal</span>
               <span>•</span>
-              <span>v1.0</span>
+              <span>Admin & Staff Access</span>
             </p>
           </div>
         </GlassCard>

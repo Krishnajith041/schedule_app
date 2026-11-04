@@ -6,6 +6,8 @@ import {
   getInitialCloudConfig,
   saveCloudSyncConfig,
   fetchEventsFromCloud,
+  fetchMenuFromCloud,
+  pushMenuToCloud,
   onBroadcastUpdate,
 } from '../lib/cloudSync';
 import type { AppState, CloudSyncConfig } from '../types';
@@ -146,6 +148,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Also sync food menu (categories and foodItems)
+        const remoteMenu = await fetchMenuFromCloud(cloudConfig);
+        if (remoteMenu && remoteMenu.categories && remoteMenu.foodItems) {
+          const currentCategories = stateRef.current.categories;
+          const currentFoodItems = stateRef.current.foodItems;
+          const catChanged =
+            remoteMenu.categories.length !== currentCategories.length ||
+            JSON.stringify(remoteMenu.categories) !== JSON.stringify(currentCategories);
+          const itemChanged =
+            remoteMenu.foodItems.length !== currentFoodItems.length ||
+            JSON.stringify(remoteMenu.foodItems) !== JSON.stringify(currentFoodItems);
+
+          if (catChanged || itemChanged) {
+            dispatch({
+              type: 'MERGE_REMOTE_MENU',
+              payload: {
+                categories: remoteMenu.categories,
+                foodItems: remoteMenu.foodItems,
+              },
+            });
+            setNotification({
+              id: Math.random().toString(),
+              message: 'Food menu updated',
+              staff: remoteMenu.updatedBy || 'Admin',
+              type: 'info',
+            });
+          }
+        } else if (remoteMenu === null && stateRef.current.categories.length > 0) {
+          // Cloud menu not initialized yet, push local menu as baseline
+          pushMenuToCloud(stateRef.current.categories, stateRef.current.foodItems, cloudConfig);
+        }
+
         const now = new Date().toISOString();
         setLastSyncedAt(now);
         setSyncStatus('synced');
@@ -177,11 +211,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onBroadcastUpdate((data) => {
       syncNow();
-      if (data.event) {
+      if (data.type === 'EVENT_MUTATED' && data.event) {
         setNotification({
           id: Math.random().toString(),
           message: `${data.action === 'SAVE' ? 'Event saved' : 'Event deleted'}: "${data.event.title || 'Event'}"`,
           staff: data.staff,
+          type: 'info',
+        });
+      } else if (data.type === 'MENU_MUTATED') {
+        setNotification({
+          id: Math.random().toString(),
+          message: 'Food menu updated',
+          staff: data.staff || 'Admin',
           type: 'info',
         });
       }

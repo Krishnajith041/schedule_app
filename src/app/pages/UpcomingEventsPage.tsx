@@ -51,7 +51,7 @@ export function UpcomingEventsPage() {
   }
 
   return (
-    <div className="page-content px-4 pt-6">
+    <div className="page-content px-4 pt-6 pb-24">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold text-white">Upcoming</h1>
@@ -94,6 +94,7 @@ export function UpcomingEventsPage() {
                       foodItems={state.foodItems}
                       onEdit={() => {}}
                       onDelete={() => {}}
+                      readOnly={true}
                     />
                   ))}
                 </div>

@@ -1,4 +1,4 @@
-import type { CateringEvent, CloudSyncConfig } from '../types';
+import type { CateringEvent, CloudSyncConfig, FoodCategory, FoodItem } from '../types';
 
 const CLOUD_CONFIG_KEY = 'catering_cloud_config_v1';
 const BROADCAST_CHANNEL_NAME = 'caterplan_sync_channel';
@@ -274,15 +274,159 @@ export function generateTeamInviteLink(config: CloudSyncConfig): string {
 }
 
 /**
+ * Push food categories and items to Firebase Realtime Database
+ */
+export async function pushMenuToCloud(
+  categories: FoodCategory[],
+  foodItems: FoodItem[],
+  config: CloudSyncConfig,
+  currentStaff?: string
+): Promise<boolean> {
+  // Broadcast to other tabs on same device immediately
+  broadcastChannel?.postMessage({
+    type: 'MENU_MUTATED',
+    staff: currentStaff || 'Admin',
+  });
+
+  if (!config.enabled || !config.firebaseUrl) return false;
+
+  const url = `${cleanFirebaseUrl(config.firebaseUrl)}/workspaces/${encodeURIComponent(config.workspaceId)}/menu.json`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        categories,
+        foodItems,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentStaff || 'Admin',
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Error pushing menu to cloud', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch menu (categories and foodItems) for workspace from cloud
+ */
+export async function fetchMenuFromCloud(
+  config: CloudSyncConfig
+): Promise<{ categories: FoodCategory[]; foodItems: FoodItem[]; updatedAt?: string; updatedBy?: string } | null> {
+  if (!config.enabled || !config.firebaseUrl) return null;
+
+  const url = `${cleanFirebaseUrl(config.firebaseUrl)}/workspaces/${encodeURIComponent(config.workspaceId)}/menu.json`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data || typeof data !== 'object') return null;
+
+    const categories: FoodCategory[] = Array.isArray(data.categories)
+      ? data.categories.filter(Boolean)
+      : typeof data.categories === 'object' && data.categories !== null
+      ? Object.values(data.categories).filter(Boolean)
+      : [];
+
+    const foodItems: FoodItem[] = Array.isArray(data.foodItems)
+      ? data.foodItems.filter(Boolean)
+      : typeof data.foodItems === 'object' && data.foodItems !== null
+      ? Object.values(data.foodItems).filter(Boolean)
+      : [];
+
+    return {
+      categories,
+      foodItems,
+      updatedAt: data.updatedAt,
+      updatedBy: data.updatedBy,
+    };
+  } catch (err) {
+    console.warn('Error fetching menu from cloud', err);
+    return null;
+  }
+}
+
+/**
+ * Push registered users registry to Firebase Realtime Database
+ */
+export async function pushUsersToCloud(
+  users: unknown[],
+  config: CloudSyncConfig
+): Promise<boolean> {
+  broadcastChannel?.postMessage({ type: 'USERS_MUTATED' });
+
+  if (!config.enabled || !config.firebaseUrl) return false;
+
+  const url = `${cleanFirebaseUrl(config.firebaseUrl)}/workspaces/${encodeURIComponent(config.workspaceId)}/users.json`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(users),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Error pushing users to cloud', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch registered users registry from cloud
+ */
+export async function fetchUsersFromCloud(
+  config: CloudSyncConfig
+): Promise<unknown[] | null> {
+  if (!config.enabled || !config.firebaseUrl) return null;
+
+  const url = `${cleanFirebaseUrl(config.firebaseUrl)}/workspaces/${encodeURIComponent(config.workspaceId)}/users.json`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data) return null;
+
+    if (Array.isArray(data)) return data.filter(Boolean);
+    if (typeof data === 'object') return Object.values(data).filter(Boolean);
+    return null;
+  } catch (err) {
+    console.warn('Error fetching users from cloud', err);
+    return null;
+  }
+}
+
+/**
  * Subscribe to multi-tab broadcast updates
  */
 export function onBroadcastUpdate(
-  callback: (data: { type: string; action: 'SAVE' | 'DELETE'; event?: CateringEvent; eventId?: string; staff: string }) => void
+  callback: (data: {
+    type: 'EVENT_MUTATED' | 'MENU_MUTATED' | 'USERS_MUTATED';
+    action?: 'SAVE' | 'DELETE';
+    event?: CateringEvent;
+    eventId?: string;
+    staff?: string;
+  }) => void
 ): () => void {
   if (!broadcastChannel) return () => {};
 
   const handler = (e: MessageEvent) => {
-    if (e.data && e.data.type === 'EVENT_MUTATED') {
+    if (e.data && (e.data.type === 'EVENT_MUTATED' || e.data.type === 'MENU_MUTATED' || e.data.type === 'USERS_MUTATED')) {
       callback(e.data);
     }
   };

@@ -97,6 +97,15 @@ export function reducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'MERGE_REMOTE_MENU': {
+      const { categories, foodItems } = action.payload;
+      return {
+        ...state,
+        categories: categories && categories.length > 0 ? categories : state.categories,
+        foodItems:  foodItems  && foodItems.length > 0  ? foodItems  : state.foodItems,
+      };
+    }
+
     // ── Maintenance ──────────────────────────────────────────────────────────
     case 'PURGE_OLD_EVENTS':
       return {

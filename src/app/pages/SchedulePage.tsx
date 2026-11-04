@@ -30,6 +30,10 @@ export function SchedulePage() {
   const [editingEvent, setEditingEvent] = useState<CateringEvent | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<CateringEvent | null>(null);
 
+  const isAdmin = user?.role === 'admin';
+  const canAddEvent = user?.role === 'admin' || user?.role === 'staff';
+  const canEditOrDelete = isAdmin;
+
   // Events visible on selected date (including recurring occurrences)
   const dayEvents = useMemo(() =>
     state.events.filter(ev => getOccurrencesOnDate(ev, selectedDate)),
@@ -121,13 +125,15 @@ export function SchedulePage() {
         <h2 className="font-display font-semibold text-white text-base">
           {formatDisplayDate(selectedDate)}
         </h2>
-        <Button3D
-          variant="primary"
-          onClick={() => setShowDialog(true)}
-          aria-label="Add event"
-        >
-          <Plus size={16} /> Add Event
-        </Button3D>
+        {canAddEvent && (
+          <Button3D
+            variant="primary"
+            onClick={() => setShowDialog(true)}
+            aria-label="Add event"
+          >
+            <Plus size={16} /> Add Event
+          </Button3D>
+        )}
       </div>
 
       {/* Day events */}
@@ -135,12 +141,14 @@ export function SchedulePage() {
         <GlassCard className="p-8 text-center animate-fade-in-up">
           <CalendarX size={32} className="text-white/20 mx-auto mb-3" />
           <p className="text-white/40 text-sm">No events on this day</p>
-          <button
-            onClick={() => setShowDialog(true)}
-            className="text-violet-400 text-sm mt-2 underline underline-offset-2"
-          >
-            Add one?
-          </button>
+          {canAddEvent && (
+            <button
+              onClick={() => setShowDialog(true)}
+              className="text-violet-400 text-sm mt-2 underline underline-offset-2 cursor-pointer"
+            >
+              Add one?
+            </button>
+          )}
         </GlassCard>
       ) : (
         <div className="flex flex-col gap-3">
@@ -152,6 +160,7 @@ export function SchedulePage() {
               foodItems={state.foodItems}
               onEdit={setEditingEvent}
               onDelete={setDeleteConfirm}
+              readOnly={!canEditOrDelete}
             />
           ))}
         </div>
