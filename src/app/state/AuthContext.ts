@@ -32,6 +32,7 @@ export interface AuthContextValue {
   logout: () => void;
   // User Registry Management (Admin functions)
   allUsers: RegisteredUser[];
+  refreshUsers: () => Promise<void>;
   addUser: (newUser: {
     username: string;
     phoneNumber: string;

@@ -96,48 +96,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  // Sync users with cloud on load or when cloud is enabled
-  useEffect(() => {
+  const refreshUsers = useCallback(async () => {
     const cloudConfig = getInitialCloudConfig();
-    if (!cloudConfig.enabled || !cloudConfig.firebaseUrl) return;
+    let local = loadLocalUsers();
 
-    fetchUsersFromCloud(cloudConfig).then(remoteUsers => {
-      if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-        const mergedMap = new Map<string, RegisteredUser>();
-        // Add root admin first
-        mergedMap.set(ROOT_ADMIN.username.toLowerCase(), ROOT_ADMIN);
-
-        // Add local users
-        loadLocalUsers().forEach(u => mergedMap.set(u.username.toLowerCase(), u));
-
-        // Add remote users
-        (remoteUsers as RegisteredUser[]).forEach(u => {
-          if (u && u.username) {
-            const key = u.username.toLowerCase();
-            if (key !== ROOT_ADMIN.username.toLowerCase()) {
-              mergedMap.set(key, u);
+    if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+      try {
+        const remoteUsers = await fetchUsersFromCloud(cloudConfig);
+        if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+          const mergedMap = new Map<string, RegisteredUser>();
+          mergedMap.set(ROOT_ADMIN.username.toLowerCase(), ROOT_ADMIN);
+          local.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
+          (remoteUsers as RegisteredUser[]).forEach(u => {
+            if (u && u.username) {
+              const key = u.username.toLowerCase();
+              if (key !== ROOT_ADMIN.username.toLowerCase()) {
+                mergedMap.set(key, u);
+              }
             }
-          }
-        });
-
-        const merged = Array.from(mergedMap.values());
-        saveLocalUsers(merged);
-        setAllUsers(merged);
-      } else {
-        // Initialize cloud with current local users
-        pushUsersToCloud(loadLocalUsers(), cloudConfig);
+          });
+          local = Array.from(mergedMap.values());
+          saveLocalUsers(local);
+        }
+      } catch (err) {
+        console.warn('Failed syncing users from cloud', err);
       }
-    });
+    }
+    setAllUsers(local);
+  }, []);
+
+  // Sync users with cloud on load, on broadcast, and on 4-second auto-poll interval
+  useEffect(() => {
+    refreshUsers();
+
+    const interval = setInterval(() => {
+      refreshUsers();
+    }, 4000);
 
     const unsubscribe = onBroadcastUpdate(data => {
       if (data.type === 'USERS_MUTATED') {
-        const updated = loadLocalUsers();
-        setAllUsers(updated);
+        refreshUsers();
       }
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [refreshUsers]);
 
   const login = useCallback(
     async (credentials: {
@@ -477,6 +483,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         allUsers,
+        refreshUsers,
         addUser,
         updateUserRole,
         deleteUser,

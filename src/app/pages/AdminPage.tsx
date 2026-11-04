@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Shield,
   ShieldAlert,
@@ -15,10 +15,22 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
+  RefreshCw,
+  Cloud,
+  CloudOff,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth, type UserRole } from '../state/AuthContext';
+import { useAppContext } from '../state/AppContext';
 import { GlassCard } from '../components/GlassCard';
 import { Button3D } from '../components/Button3D';
+import {
+  cleanFirebaseUrl,
+  testCloudConnection,
+  generateTeamInviteLink,
+} from '../lib/cloudSync';
 
 const ROLE_CONFIG: Record<
   UserRole,
@@ -45,7 +57,8 @@ const ROLE_CONFIG: Record<
 };
 
 export function AdminPage() {
-  const { user, allUsers, addUser, updateUserRole, deleteUser } = useAuth();
+  const { user, allUsers, refreshUsers, addUser, updateUserRole, deleteUser } = useAuth();
+  const { cloudConfig, updateCloudConfig, syncNow, syncStatus, lastSyncedAt } = useAppContext();
 
   // New user form state
   const [newUsername, setNewUsername] = useState('');
@@ -55,6 +68,38 @@ export function AdminPage() {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedTime, setLastRefreshedTime] = useState<string>(
+    new Date().toLocaleTimeString()
+  );
+
+  // Cloud config edit state inside AdminPage
+  const [firebaseUrlInput, setFirebaseUrlInput] = useState(cloudConfig.firebaseUrl || '');
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [cloudMessage, setCloudMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Auto-poll registered users every 3 seconds while AdminPage is visible
+  useEffect(() => {
+    refreshUsers();
+    const timer = setInterval(() => {
+      refreshUsers();
+      setLastRefreshedTime(new Date().toLocaleTimeString());
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [refreshUsers]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshUsers();
+    if (cloudConfig.enabled && cloudConfig.firebaseUrl) {
+      await syncNow();
+    }
+    setLastRefreshedTime(new Date().toLocaleTimeString());
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   if (user?.role !== 'admin') {
     return (
@@ -88,6 +133,7 @@ export function AdminPage() {
       setNewPassword('');
       setNewPhone('');
       setNewRole('staff');
+      refreshUsers();
     } else {
       setFormError(res.error || 'Failed to register user.');
     }
@@ -98,13 +144,52 @@ export function AdminPage() {
       const res = deleteUser(username);
       if (!res.success && res.error) {
         alert(res.error);
+      } else {
+        refreshUsers();
       }
+    }
+  };
+
+  const handleSaveCloudUrl = async () => {
+    setCloudMessage(null);
+    const cleaned = cleanFirebaseUrl(firebaseUrlInput);
+    if (!cleaned) {
+      setCloudMessage({ type: 'error', text: 'Please enter a valid Firebase URL' });
+      return;
+    }
+    setIsSavingCloud(true);
+    const test = await testCloudConnection(cleaned, cloudConfig.workspaceId || 'main-schedule');
+    setIsSavingCloud(false);
+
+    if (test.success) {
+      const updated = {
+        ...cloudConfig,
+        enabled: true,
+        firebaseUrl: cleaned,
+      };
+      updateCloudConfig(updated);
+      setCloudMessage({ type: 'success', text: 'Connected successfully! Cloud sync is now live for all users.' });
+      await syncNow();
+      refreshUsers();
+    } else {
+      setCloudMessage({ type: 'error', text: test.message });
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    const link = generateTeamInviteLink(cloudConfig);
+    if (navigator.clipboard && link) {
+      navigator.clipboard.writeText(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
     }
   };
 
   const adminCount = allUsers.filter(u => u.role === 'admin').length;
   const staffCount = allUsers.filter(u => u.role === 'staff').length;
   const viewerCount = allUsers.filter(u => u.role === 'viewer').length;
+
+  const isLive = cloudConfig.enabled && !!cloudConfig.firebaseUrl;
 
   return (
     <div className="page-content px-4 pt-6 pb-24 max-w-3xl mx-auto space-y-6">
@@ -121,7 +206,107 @@ export function AdminPage() {
             Manage who can access the catering portal and their permission levels
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleManualRefresh}
+          disabled={isRefreshing}
+          className="btn-3d btn-secondary text-xs flex items-center gap-1.5 px-3 py-2 cursor-pointer flex-shrink-0"
+          title="Refresh user list from cloud"
+        >
+          <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
+
+      {/* ── Team Cloud Sync Card ── */}
+      <GlassCard className="p-4 border-violet-500/30 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            {isLive ? (
+              <Cloud size={18} className="text-emerald-400 animate-pulse" />
+            ) : (
+              <CloudOff size={18} className="text-red-400" />
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-display font-semibold text-white text-sm">
+                  Team Cloud Sync Backend
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    isLive
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                      : 'bg-red-500/20 text-red-300 border-red-400/40'
+                  }`}
+                >
+                  {isLive ? 'Live & Connected' : 'Offline / Not Connected'}
+                </span>
+              </div>
+              <p className="text-xs text-white/50 mt-0.5">
+                {isLive
+                  ? `Synced with Firebase · ${lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Active'}`
+                  : 'Enter your Firebase Realtime Database URL below to activate live sync across all devices.'}
+              </p>
+            </div>
+          </div>
+
+          {isLive && (
+            <button
+              type="button"
+              onClick={handleCopyInviteLink}
+              className="btn-3d btn-primary text-xs flex items-center gap-1.5 px-3 py-1.5 cursor-pointer flex-shrink-0"
+            >
+              {copiedLink ? <Check size={13} className="text-emerald-300" /> : <Copy size={13} />}
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Staff Invite Link'}</span>
+            </button>
+          )}
+        </div>
+
+        {copiedLink && (
+          <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-200 animate-fade-in flex items-center gap-2">
+            <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
+            <span>
+              Copied! Send this link to staff on mobile or laptop. Opening it will instantly switch their app from
+              &apos;Offline&apos; to &apos;Live&apos;!
+            </span>
+          </div>
+        )}
+
+        {/* Firebase URL Input */}
+        <div className="pt-1">
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-white/60 block mb-1">
+            Firebase Realtime Database URL
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={firebaseUrlInput}
+              onChange={(e) => setFirebaseUrlInput(e.target.value)}
+              placeholder="https://your-project-default-rtdb.firebaseio.com"
+              className="glass-input text-xs flex-1"
+            />
+            <Button3D
+              variant="primary"
+              onClick={handleSaveCloudUrl}
+              disabled={isSavingCloud}
+              className="text-xs px-3 py-1.5 flex-shrink-0"
+            >
+              {isSavingCloud ? 'Testing...' : 'Save & Connect'}
+            </Button3D>
+          </div>
+          {cloudMessage && (
+            <p
+              className={`text-xs mt-1.5 flex items-center gap-1 ${
+                cloudMessage.type === 'success' ? 'text-emerald-300' : 'text-red-300'
+              }`}
+            >
+              {cloudMessage.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+              <span>{cloudMessage.text}</span>
+            </p>
+          )}
+        </div>
+      </GlassCard>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -161,16 +346,19 @@ export function AdminPage() {
         </div>
       </GlassCard>
 
-      {/* Users List */}
+      {/* Users List with Real-time indicator */}
       <GlassCard className="overflow-hidden border-white/15">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Users size={16} className="text-violet-400" />
             <h2 className="font-display font-semibold text-white text-base">
               Registered Accounts ({allUsers.length})
             </h2>
           </div>
-          <span className="text-xs text-white/40">Only these users can sign in</span>
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Updated: {lastRefreshedTime}</span>
+          </div>
         </div>
 
         <div className="divide-y divide-white/5">
@@ -215,7 +403,7 @@ export function AdminPage() {
                       {u.lastLoginAt ? (
                         <span className="flex items-center gap-1 text-[11px] text-emerald-400/70">
                           <Clock size={11} />
-                          Active {new Date(u.lastLoginAt).toLocaleDateString()}
+                          Active {new Date(u.lastLoginAt).toLocaleDateString()} {new Date(u.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       ) : (
                         <span className="text-[11px] text-white/30">Never logged in</span>
@@ -246,7 +434,7 @@ export function AdminPage() {
                         onClick={() => handleDelete(u.username)}
                         title={`Delete ${u.username}`}
                         aria-label={`Delete ${u.username}`}
-                        className="btn-3d btn-icon btn-danger"
+                        className="btn-3d btn-icon btn-danger cursor-pointer"
                         style={{ minWidth: 32, minHeight: 32, padding: '6px' }}
                       >
                         <Trash2 size={13} />
@@ -381,4 +569,3 @@ export function AdminPage() {
     </div>
   );
 }
-
