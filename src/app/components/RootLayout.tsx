@@ -11,7 +11,7 @@ import {
   Shield,
   Eye,
   CalendarPlus,
-  AlertTriangle, MoreHorizontal,
+  AlertTriangle, MoreHorizontal, Utensils,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { useAppContext } from '../state/AppContext';
@@ -98,7 +98,7 @@ export function RootLayout() {
           <div className="flex items-center gap-2.5 flex-shrink-0">
             {/* Brand icon — default gradient icon, no image */}
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md shadow-violet-500/30 flex-shrink-0">
-              <span className="text-white font-bold text-sm font-display">M</span>
+              <Utensils size={18} className="text-white" />
             </div>
             <div>
               <div className="text-xs font-bold text-white tracking-wider font-display">
