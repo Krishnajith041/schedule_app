@@ -397,11 +397,20 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .cal-day.today .cal-day-num {
   background: linear-gradient(135deg, #7c3aed, #ec4899);
   color: #fff;
+  font-weight: 700;
   border-radius: 50%;
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.45);
 }
-.cal-day.selected { background: rgba(167,139,250,0.15); }
+.cal-day.selected {
+  background: rgba(167,139,250,0.22);
+  border: 1px solid rgba(167,139,250,0.45);
+}
+.cal-day.selected:not(.today) .cal-day-num {
+  color: #fff;
+  font-weight: 700;
+}
 .cal-day.other-month .cal-day-num { color: rgba(255,255,255,0.2); }
 .cal-day-num {
   font-size: 0.8rem;

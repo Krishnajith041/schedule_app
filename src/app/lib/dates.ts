@@ -2,23 +2,23 @@
  * Date helpers – all pure functions, no side effects.
  */
 
-/** Returns today's date as YYYY-MM-DD */
+/** Format a Date → YYYY-MM-DD (local time) */
+export function toDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Returns today's date as YYYY-MM-DD in local time */
 export function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toDateStr(new Date());
 }
 
 /** Returns a Date object set to midnight local time for a YYYY-MM-DD string */
 export function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
-}
-
-/** Format a Date → YYYY-MM-DD */
-export function toDateStr(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 /** Returns true if dateStr is older than 3 calendar months from today */

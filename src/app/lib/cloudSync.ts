@@ -12,6 +12,19 @@ const broadcastChannel =
 export function cleanFirebaseUrl(url: string): string {
   if (!url) return '';
   let cleaned = url.trim();
+
+  // If user pasted a full invite link or string containing syncUrl query param
+  if (cleaned.includes('syncUrl=')) {
+    try {
+      const match = cleaned.match(/[?&#]syncUrl=([^&#]+)/);
+      if (match && match[1]) {
+        cleaned = decodeURIComponent(match[1]);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   // Remove trailing slashes and .json
   cleaned = cleaned.replace(/\.json\/?$/, '');
   cleaned = cleaned.replace(/\/+$/, '');
@@ -270,10 +283,11 @@ export async function testCloudConnection(
 export function generateTeamInviteLink(config: CloudSyncConfig): string {
   if (typeof window === 'undefined') return '';
   const origin = window.location.origin;
-  const pathname = window.location.pathname;
+  const pathname = window.location.pathname.replace(/\/+$/, '');
   const encodedUrl = encodeURIComponent(config.firebaseUrl);
-  const encodedWs = encodeURIComponent(config.workspaceId);
-  return `${origin}${pathname}#/?syncUrl=${encodedUrl}&ws=${encodedWs}`;
+  const encodedWs = encodeURIComponent(config.workspaceId || 'main-schedule');
+  // Include query params in both search and hash so it survives any client-side routing on GitHub Pages
+  return `${origin}${pathname}/?syncUrl=${encodedUrl}&ws=${encodedWs}#/login`;
 }
 
 /**

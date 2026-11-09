@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import {
-  UtensilsCrossed,
   LogOut,
   Users,
   Cloud,
@@ -12,6 +11,7 @@ import {
   Shield,
   Eye,
   CalendarPlus,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { useAppContext } from '../state/AppContext';
@@ -32,6 +32,7 @@ export function RootLayout() {
   } = useAppContext();
 
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
@@ -94,62 +95,47 @@ export function RootLayout() {
         <div className="mx-auto max-w-3xl flex items-center justify-between gap-2">
           {/* Brand & Sync indicator */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
-              <UtensilsCrossed size={16} />
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-1 shadow-md shadow-violet-500/10 flex-shrink-0">
+              <img
+                src="/logo.png"
+                alt="MH CATERING & EVENTS"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="text-xs font-bold text-white tracking-wider font-display">
-                CATERING HUB
+                MH CATERING &amp; EVENTS
               </div>
-              {/* Sync status: only clickable button if admin; subtle text for non-admin */}
-              {isAdmin ? (
-                <button
-                  type="button"
-                  onClick={() => setShowSyncModal(true)}
-                  title={`${syncTitle} (Click to manage Team Sync)`}
-                  className="text-[10px] flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
-                    syncStatus === 'syncing' ? (
-                      <RefreshCw size={10} className={syncColor} />
-                    ) : syncStatus === 'error' ? (
-                      <CloudOff size={10} className={syncColor} />
-                    ) : (
-                      <Cloud size={10} className={syncColor} />
-                    )
+              {/* Sync status: clickable for both admin and staff */}
+              <button
+                type="button"
+                onClick={() => setShowSyncModal(true)}
+                title={`${syncTitle} (Click to manage Team Sync)`}
+                className="text-[10px] flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
+                  syncStatus === 'syncing' ? (
+                    <RefreshCw size={10} className={syncColor} />
+                  ) : syncStatus === 'error' ? (
+                    <CloudOff size={10} className={syncColor} />
                   ) : (
                     <Cloud size={10} className={syncColor} />
-                  )}
-                  <span className={syncColor}>
-                    {cloudConfig.enabled && cloudConfig.firebaseUrl
-                      ? syncStatus === 'syncing'
-                        ? 'Syncing…'
-                        : syncStatus === 'error'
-                        ? 'Sync Error'
-                        : 'Team Sync'
-                      : 'Local Only'}
-                  </span>
-                </button>
-              ) : (
-                <div title={syncTitle} className="text-[10px] flex items-center gap-1">
-                  {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
-                    syncStatus === 'syncing' ? (
-                      <RefreshCw size={10} className={syncColor} />
-                    ) : (
-                      <Cloud size={10} className={syncColor} />
-                    )
-                  ) : (
-                    <Cloud size={10} className="text-white/30" />
-                  )}
-                  <span className={syncColor}>
-                    {cloudConfig.enabled && cloudConfig.firebaseUrl
-                      ? syncStatus === 'syncing'
-                        ? 'Syncing…'
-                        : 'Live'
-                      : 'Offline'}
-                  </span>
-                </div>
-              )}
+                  )
+                ) : (
+                  <CloudOff size={10} className="text-white/40" />
+                )}
+                <span className={syncColor}>
+                  {cloudConfig.enabled && cloudConfig.firebaseUrl
+                    ? syncStatus === 'syncing'
+                      ? 'Syncing…'
+                      : syncStatus === 'error'
+                      ? 'Sync Error'
+                      : isAdmin
+                      ? 'Team Sync'
+                      : 'Live'
+                    : 'Offline'}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -180,13 +166,13 @@ export function RootLayout() {
                 {roleBadge}
               </div>
 
-              {/* Logout */}
+              {/* Logout button (triggers warning confirmation modal) */}
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => setShowLogoutConfirm(true)}
                 title="Sign out"
                 aria-label="Sign out"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs font-semibold text-white/80 hover:text-white border border-white/15 cursor-pointer flex-shrink-0"
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 active:scale-95 transition-all text-xs font-semibold text-white/80 hover:text-red-200 border border-white/15 hover:border-red-500/30 cursor-pointer flex-shrink-0"
               >
                 <LogOut size={14} />
                 <span className="hidden sm:inline">Logout</span>
@@ -233,8 +219,8 @@ export function RootLayout() {
         </div>
       )}
 
-      {/* ── Team Sync Modal (Admin Only) ── */}
-      {showSyncModal && isAdmin && (
+      {/* ── Team Sync Modal ── */}
+      {showSyncModal && (
         <TeamSyncModal
           config={cloudConfig}
           onSaveConfig={updateCloudConfig}
@@ -242,7 +228,55 @@ export function RootLayout() {
           onClose={() => setShowSyncModal(false)}
           syncStatus={syncStatus}
           lastSyncedAt={lastSyncedAt}
+          isAdmin={isAdmin}
         />
+      )}
+
+      {/* ── Logout Warning Confirmation Modal ── */}
+      {showLogoutConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-confirm-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+        >
+          <div className="glass-card max-w-sm w-full p-6 border border-white/20 shadow-2xl animate-fade-in-up text-center">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 text-rose-400 mx-auto mb-4 flex items-center justify-center shadow-lg shadow-red-500/20">
+              <AlertTriangle size={28} className="text-amber-400" />
+            </div>
+
+            <h3
+              id="logout-confirm-title"
+              className="text-lg font-bold text-white font-display"
+            >
+              Confirm Log Out
+            </h3>
+            <p className="text-sm text-white/70 mt-2 mb-6 leading-relaxed">
+              Are you sure you want to log out of <strong className="text-white">MH CATERING &amp; EVENTS</strong>? You will need your login credentials to access the app again.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 active:scale-98 transition-all text-sm font-semibold text-white border border-white/15 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-98 transition-all text-sm font-semibold text-white shadow-lg shadow-red-600/30 border border-red-400/30 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <LogOut size={15} />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

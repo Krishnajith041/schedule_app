@@ -20,7 +20,8 @@ import {
   CloudOff,
   Copy,
   Check,
-  ExternalLink,
+  HelpCircle,
+  Radio,
 } from 'lucide-react';
 import { useAuth, type UserRole } from '../state/AuthContext';
 import { useAppContext } from '../state/AppContext';
@@ -58,7 +59,7 @@ const ROLE_CONFIG: Record<
 
 export function AdminPage() {
   const { user, allUsers, refreshUsers, addUser, updateUserRole, deleteUser } = useAuth();
-  const { cloudConfig, updateCloudConfig, syncNow, syncStatus, lastSyncedAt } = useAppContext();
+  const { cloudConfig, updateCloudConfig, syncNow, lastSyncedAt } = useAppContext();
 
   // New user form state
   const [newUsername, setNewUsername] = useState('');
@@ -80,6 +81,7 @@ export function AdminPage() {
   const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [cloudMessage, setCloudMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Auto-poll registered users every 3 seconds while AdminPage is visible
   useEffect(() => {
@@ -203,7 +205,7 @@ export function AdminPage() {
             <h1 className="font-display text-2xl font-bold text-white">Staff & Permissions</h1>
           </div>
           <p className="text-sm text-white/50 mt-1">
-            Manage who can access the catering portal and their permission levels
+            Manage who can access the MH CATERING &amp; EVENTS portal and their permission levels
           </p>
         </div>
 
@@ -305,6 +307,49 @@ export function AdminPage() {
               <span>{cloudMessage.text}</span>
             </p>
           )}
+
+          {/* Help guide toggle if not connected */}
+          {!isLive && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowHelp(prev => !prev)}
+                className="text-xs text-violet-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <HelpCircle size={13} />
+                <span>{showHelp ? 'Hide setup instructions' : 'Free 1-Minute Setup Guide (No credit card required)'}</span>
+              </button>
+              {showHelp && (
+                <div className="mt-2.5 p-3.5 rounded-xl bg-violet-950/60 border border-violet-400/20 text-xs text-white/80 space-y-2 animate-fade-in">
+                  <p className="font-semibold text-white flex items-center gap-1.5">
+                    <Radio size={14} className="text-pink-400" />
+                    How to get your free database in 60 seconds:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1.5 text-white/70">
+                    <li>
+                      Open{' '}
+                      <a
+                        href="https://console.firebase.google.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-violet-300 underline underline-offset-2"
+                      >
+                        console.firebase.google.com
+                      </a>{' '}
+                      (Sign in with your Google account).
+                    </li>
+                    <li>Click <strong>Add Project</strong> (name it anything, e.g. &quot;CateringApp&quot;).</li>
+                    <li>In the left sidebar, click <strong>Build</strong> → <strong>Realtime Database</strong>.</li>
+                    <li>Click <strong>Create Database</strong> and choose <strong>Start in test mode</strong>.</li>
+                    <li>Copy the database URL (ending with <code className="text-pink-300">.firebaseio.com</code>) and paste it in the box above!</li>
+                  </ol>
+                  <p className="text-[11px] text-white/50 pt-1.5 border-t border-white/10">
+                    Once connected, all events and staff registrations on Android, iPhone, and PC will automatically stay in sync!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </GlassCard>
 
@@ -355,9 +400,18 @@ export function AdminPage() {
               Registered Accounts ({allUsers.length})
             </h2>
           </div>
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>Updated: {lastRefreshedTime}</span>
+          <div className="flex items-center gap-2 text-xs">
+            {isLive ? (
+              <span className="text-emerald-400 flex items-center gap-1.5 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                Live Cloud Synced · {lastRefreshedTime}
+              </span>
+            ) : (
+              <span className="text-amber-300/80 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                Local Only (Connect above to sync with mobile)
+              </span>
+            )}
           </div>
         </div>
 

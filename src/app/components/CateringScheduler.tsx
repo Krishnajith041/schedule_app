@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import {
-  MONTH_NAMES, DAY_NAMES, daysInMonth, firstWeekdayOfMonth,
+  MONTH_NAMES, SHORT_MONTH_NAMES, DAY_NAMES, daysInMonth, firstWeekdayOfMonth,
   toDateStr,
 } from '../lib/dates';
 import { getOccurrencesOnDate } from '../lib/recurrence';
@@ -16,10 +16,34 @@ interface CateringSchedulerProps {
 
 export function CateringScheduler({ events, selectedDate, onSelectDate }: CateringSchedulerProps) {
   const today = new Date();
-  const [viewYear,  setViewYear]  = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-
   const todayStr = toDateStr(today);
+
+  const [viewYear,  setViewYear]  = useState(() => {
+    if (selectedDate) {
+      const [y] = selectedDate.split('-').map(Number);
+      if (!isNaN(y)) return y;
+    }
+    return today.getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (selectedDate) {
+      const [, m] = selectedDate.split('-').map(Number);
+      if (!isNaN(m)) return m - 1;
+    }
+    return today.getMonth();
+  });
+
+  const [prevSelectedDate, setPrevSelectedDate] = useState(selectedDate);
+  if (selectedDate !== prevSelectedDate) {
+    setPrevSelectedDate(selectedDate);
+    if (selectedDate) {
+      const [y, m] = selectedDate.split('-').map(Number);
+      if (!isNaN(y) && !isNaN(m)) {
+        setViewYear(y);
+        setViewMonth(m - 1);
+      }
+    }
+  }
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -30,9 +54,11 @@ export function CateringScheduler({ events, selectedDate, onSelectDate }: Cateri
     else setViewMonth(m => m + 1);
   }
   function goToday() {
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
-    onSelectDate(todayStr);
+    const now = new Date();
+    const currentTodayStr = toDateStr(now);
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    onSelectDate(currentTodayStr);
   }
 
   const totalDays   = daysInMonth(viewYear, viewMonth);
@@ -66,12 +92,20 @@ export function CateringScheduler({ events, selectedDate, onSelectDate }: Cateri
           <ChevronLeft size={18} />
         </button>
         <div className="text-center">
-          <h2 className="font-display font-bold text-white text-lg">
+          <h2 className="font-display font-bold text-white text-lg leading-tight">
             {MONTH_NAMES[viewMonth]} {viewYear}
           </h2>
+          <span className="text-[11px] font-semibold text-violet-300 tracking-wide">
+            Today: {today.getDate()} {SHORT_MONTH_NAMES[today.getMonth()]} {today.getFullYear()}
+          </span>
         </div>
         <div className="flex gap-2">
-          <button onClick={goToday} className="btn-3d btn-icon btn-secondary" aria-label="Go to today">
+          <button
+            onClick={goToday}
+            className="btn-3d btn-icon btn-secondary"
+            title={`Jump to today (${today.getDate()} ${SHORT_MONTH_NAMES[today.getMonth()]} ${today.getFullYear()})`}
+            aria-label="Go to today"
+          >
             <RotateCcw size={16} />
           </button>
           <button onClick={nextMonth} className="btn-3d btn-icon btn-secondary" aria-label="Next month">

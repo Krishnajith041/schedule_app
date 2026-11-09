@@ -28,6 +28,7 @@ interface TeamSyncModalProps {
   onClose: () => void;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'error' | 'disabled';
   lastSyncedAt?: string;
+  isAdmin?: boolean;
 }
 
 export function TeamSyncModal({
@@ -37,6 +38,7 @@ export function TeamSyncModal({
   onClose,
   syncStatus,
   lastSyncedAt,
+  isAdmin = true,
 }: TeamSyncModalProps) {
   const [enabled, setEnabled] = useState(config.enabled);
   const [workspaceId, setWorkspaceId] = useState(config.workspaceId || 'main-schedule');
@@ -229,24 +231,31 @@ export function TeamSyncModal({
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-white/80 uppercase tracking-wider flex items-center gap-1.5">
                     <Cloud size={14} className="text-violet-400" />
-                    Firebase Database URL
+                    {isAdmin ? 'Firebase Database URL' : 'Team Database URL or Invite Link'}
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowHelp(prev => !prev)}
-                    className="text-xs text-violet-300 hover:text-white flex items-center gap-1 cursor-pointer"
-                  >
-                    <HelpCircle size={13} />
-                    <span>{showHelp ? 'Hide instructions' : 'Free Setup Guide'}</span>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHelp(prev => !prev)}
+                      className="text-xs text-violet-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                    >
+                      <HelpCircle size={13} />
+                      <span>{showHelp ? 'Hide instructions' : 'Free Setup Guide'}</span>
+                    </button>
+                  )}
                 </div>
                 <input
                   type="url"
                   value={firebaseUrl}
                   onChange={(e) => setFirebaseUrl(e.target.value)}
-                  placeholder="https://your-app-default-rtdb.firebaseio.com"
+                  placeholder={isAdmin ? 'https://your-app-default-rtdb.firebaseio.com' : 'Paste team invite link or database URL'}
                   className="glass-input text-sm font-mono text-xs"
                 />
+                {!isAdmin && (
+                  <p className="text-[11px] text-white/40 mt-1">
+                    Ask your admin for the Team Invite Link or Database URL, then paste it here to connect your phone.
+                  </p>
+                )}
               </div>
 
               {/* Free Setup Guide Accordion */}

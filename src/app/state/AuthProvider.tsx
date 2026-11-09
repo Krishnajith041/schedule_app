@@ -106,7 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
           const mergedMap = new Map<string, RegisteredUser>();
           mergedMap.set(ROOT_ADMIN.username.toLowerCase(), ROOT_ADMIN);
+          // Add local users first
           local.forEach(u => mergedMap.set(u.username.toLowerCase(), u));
+          // Remote users take precedence or add new
           (remoteUsers as RegisteredUser[]).forEach(u => {
             if (u && u.username) {
               const key = u.username.toLowerCase();
@@ -115,8 +117,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           });
-          local = Array.from(mergedMap.values());
-          saveLocalUsers(local);
+          const merged = Array.from(mergedMap.values());
+          saveLocalUsers(merged);
+          local = merged;
+
+          // If there are local accounts that were created offline and missing on cloud, push them
+          const remoteKeys = new Set(
+            (remoteUsers as RegisteredUser[])
+              .filter(Boolean)
+              .map(u => u.username?.toLowerCase())
+          );
+          const hasMissingOnCloud = merged.some(u => !remoteKeys.has(u.username.toLowerCase()));
+          if (hasMissingOnCloud) {
+            pushUsersToCloud(merged, cloudConfig);
+          }
+        } else if (remoteUsers === null || remoteUsers.length === 0) {
+          // Cloud database is empty or uninitialized: seed cloud with current local users
+          pushUsersToCloud(local, cloudConfig);
         }
       } catch (err) {
         console.warn('Failed syncing users from cloud', err);

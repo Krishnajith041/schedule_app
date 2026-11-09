@@ -11,20 +11,24 @@ import {
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
-  ChefHat,
   X,
   Cloud,
+  CloudOff,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
+import { useAppContext } from '../state/AppContext';
 import { GlassCard } from '../components/GlassCard';
 import { Button3D } from '../components/Button3D';
+import { TeamSyncModal } from '../components/TeamSyncModal';
 
 export function LoginPage() {
   const { login, signup, isAuthenticated } = useAuth();
+  const { cloudConfig, updateCloudConfig, syncNow, syncStatus, lastSyncedAt } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [showSyncModal, setShowSyncModal] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -164,17 +168,45 @@ export function LoginPage() {
         <GlassCard className="p-6 sm:p-8 border border-white/15 shadow-2xl backdrop-blur-xl">
           {/* Header & Logo */}
           <div className="text-center mb-5">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-lg shadow-violet-500/30 mb-3 border border-white/20">
-              <ChefHat size={30} strokeWidth={2.2} />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/5 border border-white/15 shadow-xl shadow-violet-500/10 mb-3 backdrop-blur-xl p-2.5">
+              <img
+                src="/logo.png"
+                alt="MH CATERING & EVENTS"
+                className="w-full h-full object-contain drop-shadow-md"
+              />
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Catering Hub
+              MH CATERING &amp; EVENTS
             </h1>
             <p className="text-sm text-white/60 mt-1">
               {mode === 'signin'
                 ? 'Sign in to access events & schedule'
                 : 'Create an account to join the catering staff'}
             </p>
+          </div>
+
+          {/* Cloud Sync Status Pill */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 mb-4 text-xs">
+            <div className="flex items-center gap-1.5">
+              {cloudConfig.enabled && cloudConfig.firebaseUrl ? (
+                <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                  <Cloud size={13} className="animate-pulse" />
+                  Team Cloud Sync Active
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-white/50">
+                  <CloudOff size={13} />
+                  Cloud Sync: Offline
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSyncModal(true)}
+              className="text-violet-300 hover:text-white underline underline-offset-2 flex items-center gap-1 cursor-pointer transition-colors text-[11px]"
+            >
+              {cloudConfig.enabled && cloudConfig.firebaseUrl ? 'Manage' : 'Connect Database'}
+            </button>
           </div>
 
           {/* Mode Switcher Tabs */}
@@ -474,6 +506,18 @@ export function LoginPage() {
           </div>
         </GlassCard>
       </div>
+
+      {showSyncModal && (
+        <TeamSyncModal
+          config={cloudConfig}
+          onSaveConfig={updateCloudConfig}
+          onSyncNow={syncNow}
+          onClose={() => setShowSyncModal(false)}
+          syncStatus={syncStatus}
+          lastSyncedAt={lastSyncedAt}
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 }

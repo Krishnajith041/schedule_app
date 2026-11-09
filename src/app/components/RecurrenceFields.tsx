@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { todayStr } from '../lib/dates';
 import type { RecurrenceRule } from '../types';
 
 const DAY_CHIPS = [
@@ -133,7 +134,7 @@ export function RecurrenceFields({ enabled, onToggle, rule, onChange }: Recurren
                   type="radio"
                   name={`${uid}-end`}
                   checked={!!rule.endDate && !rule.occurrences}
-                  onChange={() => update({ endDate: new Date().toISOString().slice(0,10), occurrences: undefined })}
+                  onChange={() => update({ endDate: todayStr(), occurrences: undefined })}
                   className="accent-violet-500"
                 />
                 <span className="text-sm text-white/70 flex-shrink-0">On date</span>
