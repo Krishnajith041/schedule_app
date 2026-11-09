@@ -11,7 +11,7 @@ import {
   Shield,
   Eye,
   CalendarPlus,
-  AlertTriangle,
+  AlertTriangle, MoreHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { useAppContext } from '../state/AppContext';
@@ -33,6 +33,7 @@ export function RootLayout() {
 
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
@@ -93,20 +94,17 @@ export function RootLayout() {
       {/* Top Header */}
       <header className="sticky top-0 z-40 px-4 py-2.5 backdrop-blur-md bg-black/30 border-b border-white/10">
         <div className="mx-auto max-w-3xl flex items-center justify-between gap-2">
-          {/* Brand & Sync indicator */}
+          {/* Left: Brand name + sync status */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-transparent border border-white/20 flex items-center justify-center p-1 shadow-md shadow-violet-500/10 flex-shrink-0">
-              <img
-                src="/logo.png"
-                alt="MH CATERING & EVENTS"
-                className="w-full h-full object-contain"
-              />
+            {/* Brand icon — default gradient icon, no image */}
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md shadow-violet-500/30 flex-shrink-0">
+              <span className="text-white font-bold text-sm font-display">M</span>
             </div>
             <div>
               <div className="text-xs font-bold text-white tracking-wider font-display">
                 MH CATERING &amp; EVENTS
               </div>
-              {/* Sync status: clickable for both admin and staff */}
+              {/* Sync status indicator */}
               <button
                 type="button"
                 onClick={() => setShowSyncModal(true)}
@@ -139,23 +137,10 @@ export function RootLayout() {
             </div>
           </div>
 
-          {/* Right side: user pill + (admin-only team sync) + logout */}
+          {/* Right: user pill + three-dot menu */}
           {user && (
             <div className="flex items-center gap-1.5 min-w-0">
-              {/* Team sync icon button (ONLY visible to admin) */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowSyncModal(true)}
-                  title="Team Cloud Sync Settings (Admin)"
-                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer flex-shrink-0"
-                  aria-label="Team sync settings"
-                >
-                  <Users size={15} className="text-amber-300" />
-                </button>
-              )}
-
-              {/* User pill with Role */}
+              {/* User pill with avatar + role badge */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/90 shadow-inner min-w-0">
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                   {user.username.charAt(0).toUpperCase()}
@@ -166,17 +151,57 @@ export function RootLayout() {
                 {roleBadge}
               </div>
 
-              {/* Logout button (triggers warning confirmation modal) */}
-              <button
-                type="button"
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Sign out"
-                aria-label="Sign out"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 active:scale-95 transition-all text-xs font-semibold text-white/80 hover:text-red-200 border border-white/15 hover:border-red-500/30 cursor-pointer flex-shrink-0"
-              >
-                <LogOut size={14} />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+              {/* Three-dot dropdown menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer flex-shrink-0"
+                  aria-label="More options"
+                  onClick={() => setShowMenu(prev => !prev)}
+                >
+                  <MoreHorizontal size={16} className="text-white/80" />
+                </button>
+                {showMenu && (
+                  <>
+                    {/* Backdrop to close menu on outside click */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-52 bg-[#1a1a2e]/95 backdrop-blur-md border border-white/15 rounded-xl shadow-2xl z-50 overflow-hidden">
+                      {/* User info header */}
+                      <div className="px-3 py-2.5 border-b border-white/10">
+                        <p className="text-xs font-semibold text-white">{user.username}</p>
+                        <p className="text-[10px] text-white/50 capitalize">{user.role}</p>
+                      </div>
+                      <ul className="py-1">
+                        {isAdmin && (
+                          <li>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-xs text-white/80 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                              onClick={() => { setShowMenu(false); setShowSyncModal(true); }}
+                            >
+                              <Users size={13} className="text-amber-300" />
+                              Team Sync Settings
+                            </button>
+                          </li>
+                        )}
+                        <li>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-xs text-red-300 hover:bg-red-500/15 flex items-center gap-2 transition-colors"
+                            onClick={() => { setShowMenu(false); setShowLogoutConfirm(true); }}
+                          >
+                            <LogOut size={13} />
+                            Log Out
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
