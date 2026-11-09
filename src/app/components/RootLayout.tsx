@@ -95,7 +95,7 @@ export function RootLayout() {
         <div className="mx-auto max-w-3xl flex items-center justify-between gap-2">
           {/* Brand & Sync indicator */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-1 shadow-md shadow-violet-500/10 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-transparent border border-white/20 flex items-center justify-center p-1 shadow-md shadow-violet-500/10 flex-shrink-0">
               <img
                 src="/logo.png"
                 alt="MH CATERING & EVENTS"
